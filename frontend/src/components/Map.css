@@ -1,0 +1,683 @@
+/* Custom Marker Styles */
+.custom-marker {
+  background: transparent;
+  border: none;
+}
+
+.marker-content {
+  width: 45px;
+  height: 45px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 2px solid white;
+}
+
+.marker-content:hover {
+  transform: scale(1.2);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+/* Category-specific marker colors */
+.marker-content.waste-pollution {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.marker-content.deforestation {
+  background: linear-gradient(135deg, #27ae60, #1e8449);
+}
+
+.marker-content.water-contamination {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+}
+
+.marker-content.air-pollution {
+  background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+}
+
+.marker-content.soil-erosion {
+  background: linear-gradient(135deg, #d35400, #a04000);
+}
+
+.marker-content.wildlife-conflict {
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+}
+
+.marker-content.resolved {
+  background: linear-gradient(135deg, #2ecc71, #27ae60);
+}
+
+/* Selected Marker Animation */
+.selected-marker-content {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  background: #2d6a4f;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  border: 3px solid white;
+  box-shadow: 0 0 0 rgba(45, 106, 79, 0.4);
+}
+
+.pulse-ring {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  border-radius: 50%;
+  border: 2px solid #2d6a4f;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* Cluster Marker Styles */
+.cluster-marker {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+  transition: all 0.3s ease;
+}
+
+.cluster-marker.small {
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
+}
+
+.cluster-marker.medium {
+  width: 50px;
+  height: 50px;
+  font-size: 16px;
+}
+
+.cluster-marker.large {
+  width: 60px;
+  height: 60px;
+  font-size: 18px;
+}
+
+.cluster-marker:hover {
+  transform: scale(1.1);
+}
+
+/* Custom Popup Styles */
+.custom-popup .leaflet-popup-content-wrapper {
+  border-radius: 15px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+}
+
+.custom-popup .leaflet-popup-content {
+  margin: 0;
+  width: auto !important;
+}
+
+.issue-popup {
+  width: 300px;
+}
+
+.popup-header {
+  padding: 15px;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-left: 5px solid #2d6a4f;
+}
+
+.popup-header h3 {
+  margin: 0 0 5px 0;
+  font-size: 16px;
+  color: #1a1a2e;
+}
+
+.popup-category {
+  font-size: 12px;
+  color: #666;
+  display: inline-block;
+  background: rgba(0,0,0,0.05);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.popup-body {
+  padding: 15px;
+}
+
+.popup-description {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+
+.popup-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  padding: 4px 8px;
+  background: #f8f9fa;
+  border-radius: 15px;
+}
+
+.detail-icon {
+  font-size: 12px;
+}
+
+.resolved-badge {
+  background: #d4edda;
+  color: #155724;
+}
+
+.pending-badge {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.popup-footer {
+  padding: 12px 15px;
+  background: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+}
+
+.view-details-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #2d6a4f, #1b4332);
+  color: white;
+  border: none;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.view-details-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 10px rgba(45, 106, 79, 0.3);
+}
+
+/* Map Legend */
+.map-legend {
+  background: white;
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  min-width: 180px;
+}
+
+.map-legend h4 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #1a1a2e;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.legend-marker {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+}
+
+.legend-marker.waste {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.legend-marker.deforestation {
+  background: linear-gradient(135deg, #27ae60, #1e8449);
+}
+
+.legend-marker.water {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+}
+
+.legend-marker.air {
+  background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+}
+
+.legend-marker.soil {
+  background: linear-gradient(135deg, #d35400, #a04000);
+}
+
+.legend-marker.wildlife {
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+}
+
+.legend-marker.resolved {
+  background: linear-gradient(135deg, #2ecc71, #27ae60);
+}
+
+.legend-stat {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #dee2e6;
+  text-align: center;
+  font-size: 13px;
+  color: #2d6a4f;
+}
+
+/* Selected Popup */
+.selected-popup {
+  text-align: center;
+  padding: 5px;
+}
+
+/* Fit bounds button hover effect */
+.fit-bounds-btn:hover {
+  background: #2d6a4f;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .map-legend {
+    display: none;
+  }
+  
+  .issue-popup {
+    width: 260px;
+  }
+  
+  .marker-content {
+    width: 35px;
+    height: 35px;
+    font-size: 18px;
+  }
+}
+/* Map container styles */
+#map {
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  background-color: #f8f9fa;
+  position: relative;
+  z-index: 1;
+}
+
+/* Make sure the parent container has height */
+.map-container,
+.main {
+  height: 100%;
+  min-height: calc(100vh - 150px);
+}
+
+/* Custom marker styles */
+.custom-marker {
+  background: transparent;
+  border: none;
+}
+
+.marker-content {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  transition: transform 0.2s ease;
+  cursor: pointer;
+  border: 2px solid white;
+}
+
+.marker-content:hover {
+  transform: scale(1.1);
+  z-index: 1000;
+}
+
+.marker-content.resolved {
+  background: linear-gradient(135deg, #2ecc71, #27ae60);
+}
+
+/* Selected marker */
+.selected-marker-content {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
+  animation: pulse 1.5s infinite;
+  border: 2px solid white;
+}
+
+.pulse-ring {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  border-radius: 50%;
+  background: rgba(231, 76, 60, 0.3);
+  animation: pulse-ring 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(231, 76, 60, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* Cluster markers */
+.cluster-marker {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: white;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  border: 2px solid white;
+}
+
+.cluster-marker.small {
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
+}
+
+.cluster-marker.medium {
+  width: 50px;
+  height: 50px;
+  font-size: 16px;
+}
+
+.cluster-marker.large {
+  width: 60px;
+  height: 60px;
+  font-size: 18px;
+}
+
+/* Popup styles */
+.custom-popup .leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.custom-popup .leaflet-popup-content {
+  margin: 0;
+  padding: 0;
+}
+
+.issue-popup {
+  font-family: inherit;
+}
+
+.popup-header {
+  padding: 12px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #eee;
+}
+
+.popup-category {
+  display: inline-block;
+  background: #e9ecef;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  margin-top: 5px;
+}
+
+.popup-body {
+  padding: 12px;
+}
+
+.popup-description {
+  font-size: 13px;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+
+.popup-details {
+  font-size: 11px;
+  color: #666;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 3px;
+}
+
+.popup-footer {
+  padding: 10px 12px;
+  border-top: 1px solid #eee;
+  background: #f8f9fa;
+}
+
+.view-details-btn {
+  background: #2d6a4f;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  width: 100%;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.view-details-btn:hover {
+  background: #1b4332;
+}
+
+/* Legend styles */
+.map-legend {
+  background: white;
+  padding: 10px 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  min-width: 160px;
+  font-size: 12px;
+}
+
+.map-legend h4 {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: #2d6a4f;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.legend-marker-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.legend-marker-icon.resolved {
+  background: linear-gradient(135deg, #2ecc71, #27ae60);
+}
+
+.legend-stat {
+  margin-top: 5px;
+  font-size: 11px;
+}
+
+hr {
+  margin: 8px 0;
+  border: none;
+  border-top: 1px solid #eee;
+}
+
+/* Dark mode support */
+body.dark .map-legend {
+  background: #2d2d3f;
+  color: #f8f9fa;
+}
+
+body.dark .map-legend h4 {
+  color: #a8e6cf;
+}
+
+body.dark .legend-stat {
+  color: #adb5bd;
+}
+
+body.dark hr {
+  border-top-color: #3d3d4f;
+}
+
+body.dark .custom-popup .leaflet-popup-content-wrapper {
+  background: #2d2d3f;
+  color: #f8f9fa;
+}
+
+body.dark .popup-header {
+  background: #252535;
+  border-bottom-color: #3d3d4f;
+}
+
+body.dark .popup-footer {
+  background: #252535;
+  border-top-color: #3d3d4f;
+}
+
+body.dark .popup-category {
+  background: #3d3d4f;
+  color: #a8e6cf;
+}
+
+body.dark .detail-text {
+  color: #adb5bd;
+}
+/* Search Marker Styles */
+.search-marker-content {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  animation: bounceIn 0.5s ease;
+}
+
+.search-pulse {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  background: rgba(52, 152, 219, 0.4);
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+  top: -10px;
+  left: -10px;
+}
+
+@keyframes bounceIn {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.search-popup {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.4;
+}
+
+/* Animation for fade out */
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
