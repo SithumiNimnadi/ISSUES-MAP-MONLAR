@@ -158,7 +158,7 @@
   flex-wrap: wrap;
 }
 
-.resolve-btn, .connect-research-btn, .delete-btn {
+.resolve-btn, .connect-research-btn, .delete-btn, .edit-btn {
   padding: 6px 16px;
   border-radius: 20px;
   cursor: pointer;
@@ -195,6 +195,16 @@
 
 .delete-btn:hover {
   background: #c0392b;
+  transform: scale(1.05);
+}
+
+.edit-btn {
+  background: #3498db;
+  color: white;
+}
+
+.edit-btn:hover {
+  background: #2980b9;
   transform: scale(1.05);
 }
 
@@ -582,6 +592,7 @@ body.dark .document-name {
   background: #f4a261;
   border-radius: 3px;
 }
+
 /* ======================================== */
 /* FIXED LIGHT THEME VIEWER STYLES */
 /* ======================================== */
@@ -753,23 +764,6 @@ body.light .document-info .document-name {
 body.light .document-info .document-size {
   color: #666;
 }
-/* Edit Button */
-.edit-btn {
-  background: #3498db;
-  color: white;
-  border: none;
-  padding: 6px 16px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 600;
-  transition: all 0.3s;
-}
-
-.edit-btn:hover {
-  background: #2980b9;
-  transform: scale(1.05);
-}
 
 /* Edit Modal Styles */
 .edit-modal-content {
@@ -914,6 +908,7 @@ body.dark .cancel-edit-btn {
   background: #2d2d3f;
   color: white;
 }
+
 /* Connect Research Modal Styles */
 .connect-research-modal {
   max-width: 500px;
@@ -1136,6 +1131,7 @@ body.dark .modal-header-custom {
 body.dark .create-research-btn {
   background: linear-gradient(135deg, #1e8449, #145a32);
 }
+
 @keyframes slideIn {
   from {
     opacity: 0;
@@ -1146,6 +1142,7 @@ body.dark .create-research-btn {
     transform: translateY(0);
   }
 }
+
 /* Connected items styles */
 .connected-items {
   margin-top: 12px;
@@ -1211,6 +1208,7 @@ body.dark .create-research-btn {
   border-radius: 12px;
   font-size: 0.7rem;
 }
+
 /* Search and Filter Bar Styles */
 .search-filter-bar {
   display: flex;

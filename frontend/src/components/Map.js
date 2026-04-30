@@ -134,7 +134,7 @@ const escapeHtml = (text) => {
   return div.innerHTML;
 };
 
-function Map({ issues, onMapClick }) {
+function Map({ issues, onMapClick, language, t }) {
   const mapRef = useRef(null);
   const markerClusterRef = useRef(null);
   const selectedMarkerRef = useRef(null);
@@ -146,6 +146,7 @@ function Map({ issues, onMapClick }) {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [mapInitialized, setMapInitialized] = useState(false);
 
   // Search location function
   const searchLocation = async (query) => {
@@ -170,7 +171,6 @@ function Map({ issues, onMapClick }) {
         setSearchResults(data);
         setShowSuggestions(true);
       } else {
-        // Show no results notification
         const notification = document.createElement('div');
         notification.textContent = 'No locations found. Try a different search term.';
         notification.style.cssText = `
@@ -198,10 +198,26 @@ function Map({ issues, onMapClick }) {
   // Fly to selected location
   const flyToLocation = (lat, lon, displayName) => {
     if (mapRef.current) {
-      mapRef.current.flyTo([parseFloat(lat), parseFloat(lon)], 14, {
-        duration: 1.5,
-        easeLinearity: 0.25
-      });
+      // Disable animation temporarily to avoid errors
+      const originalZoomAnimation = mapRef.current.options.zoomAnimation;
+      mapRef.current.options.zoomAnimation = false;
+      
+      try {
+        mapRef.current.flyTo([parseFloat(lat), parseFloat(lon)], 14, {
+          duration: 1.5,
+          easeLinearity: 0.25
+        });
+      } catch (error) {
+        console.warn('FlyTo error, using setView instead:', error);
+        mapRef.current.setView([parseFloat(lat), parseFloat(lon)], 14);
+      }
+      
+      // Restore animation
+      setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.options.zoomAnimation = originalZoomAnimation;
+        }
+      }, 2000);
       
       // Remove previous search marker if exists
       if (searchMarkerRef.current) {
@@ -261,13 +277,18 @@ function Map({ issues, onMapClick }) {
     }
 
     // Check if map is already initialized
-    if (mapRef.current) return;
+    if (mapRef.current || mapInitialized) return;
 
-    // Small delay to ensure container is ready
+    // Wait for container to be ready
     const timer = setTimeout(() => {
       try {
-        // Create map
-        mapRef.current = L.map('map').setView([7.8731, 80.7718], 7.5);
+        // Create map with safe options (disable animations to prevent errors)
+        mapRef.current = L.map('map', {
+          zoomAnimation: false,
+          fadeAnimation: false,
+          markerZoomAnimation: false,
+          inertia: false
+        }).setView([7.8731, 80.7718], 7.5);
         
         // Add tile layer
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
@@ -307,7 +328,7 @@ function Map({ issues, onMapClick }) {
           
           let district = await getDistrictFromNominatim(lat, lng);
           
-          if (selectedMarkerRef.current) {
+          if (selectedMarkerRef.current && mapRef.current) {
             selectedMarkerRef.current.setPopupContent(`
               <div class="selected-popup">
                 <strong>📍 Selected Location</strong><br/>
@@ -326,6 +347,7 @@ function Map({ issues, onMapClick }) {
         });
         
         setMapLoaded(true);
+        setMapInitialized(true);
         console.log('Map initialized successfully');
         
         // Force a resize after map is loaded
@@ -333,42 +355,76 @@ function Map({ issues, onMapClick }) {
           if (mapRef.current) {
             mapRef.current.invalidateSize();
           }
-        }, 100);
+        }, 200);
         
       } catch (error) {
         console.error('Error initializing map:', error);
       }
-    }, 100);
+    }, 150); // Increased delay to ensure DOM is ready
     
     return () => {
       clearTimeout(timer);
       if (mapRef.current) {
-        mapRef.current.remove();
+        try {
+          // Clean up marker cluster if exists
+          if (markerClusterRef.current) {
+            mapRef.current.removeLayer(markerClusterRef.current);
+            markerClusterRef.current = null;
+          }
+          // Clean up legend
+          if (legendRef.current) {
+            mapRef.current.removeControl(legendRef.current);
+            legendRef.current = null;
+          }
+          // Clean up search marker
+          if (searchMarkerRef.current) {
+            mapRef.current.removeLayer(searchMarkerRef.current);
+            searchMarkerRef.current = null;
+          }
+          // Remove map
+          mapRef.current.remove();
+        } catch (error) {
+          console.warn('Error cleaning up map:', error);
+        }
         mapRef.current = null;
         setMapLoaded(false);
+        setMapInitialized(false);
       }
     };
   }, [onMapClick]);
 
   // Display issue markers with clustering
   useEffect(() => {
-    if (!mapRef.current || !mapLoaded) return;
+    if (!mapRef.current || !mapLoaded || !mapInitialized) {
+      console.log('Map not ready for markers');
+      return;
+    }
     
     console.log('Updating markers with issues:', issues.length);
     
-    // Remove existing marker cluster
+    // Remove existing marker cluster safely
     if (markerClusterRef.current) {
-      mapRef.current.removeLayer(markerClusterRef.current);
+      try {
+        mapRef.current.removeLayer(markerClusterRef.current);
+      } catch (error) {
+        console.warn('Error removing cluster layer:', error);
+      }
+      markerClusterRef.current = null;
     }
     
-    if (issues.length === 0) return;
+    if (issues.length === 0) {
+      console.log('No issues to display');
+      return;
+    }
     
-    // Create new marker cluster group
+    // Create new marker cluster group with safe options
     markerClusterRef.current = L.markerClusterGroup({
       maxClusterRadius: 80,
       spiderfyOnMaxZoom: true,
       showCoverageOnHover: true,
       zoomToBoundsOnClick: true,
+      animateAddingMarkers: false, // Disable animation to prevent errors
+      disableClusteringAtZoom: 18,
       iconCreateFunction: function(cluster) {
         const childCount = cluster.getChildCount();
         let size = 'small';
@@ -397,6 +453,8 @@ function Map({ issues, onMapClick }) {
     
     // Add markers for each issue
     let addedCount = 0;
+    const markers = [];
+    
     issues.forEach(issue => {
       // Validate coordinates
       if (!issue.lat || !issue.lng || isNaN(issue.lat) || isNaN(issue.lng)) {
@@ -404,81 +462,90 @@ function Map({ issues, onMapClick }) {
         return;
       }
       
-      const markerIcon = getMarkerIcon(issue.category, issue.status);
-      const marker = L.marker([issue.lat, issue.lng], { icon: markerIcon });
-      
-      const buttonId = `btn-${issue._id}-${Date.now()}-${Math.random()}`;
-      const popupContent = `
-        <div class="issue-popup">
-          <div class="popup-header" style="border-left-color: ${getCategoryColor(issue.category)}">
-            <h3>${escapeHtml(issue.title)}</h3>
-            <span class="popup-category">${issue.category}</span>
-          </div>
-          <div class="popup-body">
-            <p class="popup-description">${escapeHtml(issue.description.substring(0, 150))}${issue.description.length > 150 ? '...' : ''}</p>
-            <div class="popup-details">
-              <div class="detail-item">
-                <span class="detail-icon">📍</span>
-                <span class="detail-text">${issue.district || 'Unknown District'}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-icon">📅</span>
-                <span class="detail-text">${new Date(issue.createdAt).toLocaleDateString()}</span>
-              </div>
-              ${issue.status === 'resolved' ? `
-                <div class="detail-item resolved-badge">
-                  <span class="detail-icon">✅</span>
-                  <span class="detail-text">Resolved</span>
+      try {
+        const markerIcon = getMarkerIcon(issue.category, issue.status);
+        const marker = L.marker([issue.lat, issue.lng], { icon: markerIcon });
+        
+        const buttonId = `btn-${issue._id}-${Date.now()}-${Math.random()}`;
+        const popupContent = `
+          <div class="issue-popup">
+            <div class="popup-header" style="border-left-color: ${getCategoryColor(issue.category)}">
+              <h3>${escapeHtml(issue.title)}</h3>
+              <span class="popup-category">${issue.category}</span>
+            </div>
+            <div class="popup-body">
+              <p class="popup-description">${escapeHtml(issue.description.substring(0, 150))}${issue.description.length > 150 ? '...' : ''}</p>
+              <div class="popup-details">
+                <div class="detail-item">
+                  <span class="detail-icon">📍</span>
+                  <span class="detail-text">${issue.district || 'Unknown District'}</span>
                 </div>
-              ` : `
-                <div class="detail-item pending-badge">
-                  <span class="detail-icon">⏳</span>
-                  <span class="detail-text">Pending</span>
+                <div class="detail-item">
+                  <span class="detail-icon">📅</span>
+                  <span class="detail-text">${new Date(issue.createdAt).toLocaleDateString()}</span>
                 </div>
-              `}
+                ${issue.status === 'resolved' ? `
+                  <div class="detail-item resolved-badge">
+                    <span class="detail-icon">✅</span>
+                    <span class="detail-text">Resolved</span>
+                  </div>
+                ` : `
+                  <div class="detail-item pending-badge">
+                    <span class="detail-icon">⏳</span>
+                    <span class="detail-text">Pending</span>
+                  </div>
+                `}
+              </div>
+            </div>
+            <div class="popup-footer">
+              <button id="${buttonId}" class="view-details-btn" data-issue-id="${issue._id}">
+                View Full Details →
+              </button>
             </div>
           </div>
-          <div class="popup-footer">
-            <button id="${buttonId}" class="view-details-btn" data-issue-id="${issue._id}">
-              View Full Details →
-            </button>
-          </div>
-        </div>
-      `;
-      
-      marker.bindPopup(popupContent, {
-        maxWidth: 320,
-        minWidth: 280,
-        className: 'custom-popup'
-      });
-      
-      marker.on('popupopen', function() {
-        setTimeout(() => {
-          const button = document.getElementById(buttonId);
-          if (button) {
-            const newButton = button.cloneNode(true);
-            button.parentNode.replaceChild(newButton, button);
-            
-            newButton.addEventListener('click', (e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              setSelectedIssue(issue);
-              marker.closePopup();
-            });
-          }
-        }, 100);
-      });
-      
-      markerClusterRef.current.addLayer(marker);
-      addedCount++;
+        `;
+        
+        marker.bindPopup(popupContent, {
+          maxWidth: 320,
+          minWidth: 280,
+          className: 'custom-popup'
+        });
+        
+        marker.on('popupopen', function() {
+          setTimeout(() => {
+            const button = document.getElementById(buttonId);
+            if (button) {
+              const newButton = button.cloneNode(true);
+              button.parentNode.replaceChild(newButton, button);
+              
+              newButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                setSelectedIssue(issue);
+                marker.closePopup();
+              });
+            }
+          }, 100);
+        });
+        
+        markerClusterRef.current.addLayer(marker);
+        markers.push(marker);
+        addedCount++;
+      } catch (error) {
+        console.warn('Error adding marker for issue:', issue._id, error);
+      }
     });
     
     console.log(`Added ${addedCount} markers to map`);
     
-    if (addedCount > 0) {
-      mapRef.current.addLayer(markerClusterRef.current);
+    if (addedCount > 0 && mapRef.current) {
+      try {
+        mapRef.current.addLayer(markerClusterRef.current);
+      } catch (error) {
+        console.warn('Error adding cluster layer to map:', error);
+      }
       
-      // Fit bounds to show all markers
+      // Fit bounds to show all markers (with delay)
       setTimeout(() => {
         if (markerClusterRef.current && mapRef.current) {
           try {
@@ -490,12 +557,17 @@ function Map({ issues, onMapClick }) {
             console.warn('Error fitting bounds:', error);
           }
         }
-      }, 100);
+      }, 300);
     }
     
-    // Add legend
-    if (legendRef.current) {
-      mapRef.current.removeControl(legendRef.current);
+    // Add legend (only if not already added)
+    if (legendRef.current && mapRef.current) {
+      try {
+        mapRef.current.removeControl(legendRef.current);
+      } catch (error) {
+        console.warn('Error removing legend:', error);
+      }
+      legendRef.current = null;
     }
     
     const LegendControl = L.Control.extend({
@@ -563,16 +635,30 @@ function Map({ issues, onMapClick }) {
     });
     
     legendRef.current = new LegendControl({ position: 'bottomright' });
-    legendRef.current.addTo(mapRef.current);
+    if (mapRef.current) {
+      try {
+        legendRef.current.addTo(mapRef.current);
+      } catch (error) {
+        console.warn('Error adding legend to map:', error);
+      }
+    }
     
-  }, [issues, mapLoaded]);
+  }, [issues, mapLoaded, mapInitialized]);
   
   const fitBoundsToMarkers = () => {
-    if (markerClusterRef.current && issues.length > 0) {
+    if (markerClusterRef.current && issues.length > 0 && mapRef.current) {
       try {
         const bounds = markerClusterRef.current.getBounds();
         if (bounds && bounds.isValid()) {
+          // Disable animation temporarily
+          const originalZoomAnimation = mapRef.current.options.zoomAnimation;
+          mapRef.current.options.zoomAnimation = false;
           mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+          setTimeout(() => {
+            if (mapRef.current) {
+              mapRef.current.options.zoomAnimation = originalZoomAnimation;
+            }
+          }, 500);
         }
       } catch (error) {
         console.warn('Error fitting bounds:', error);
@@ -606,7 +692,7 @@ function Map({ issues, onMapClick }) {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="🔍 Search for a location in Sri Lanka (e.g., Colombo, Kandy, Galle)..."
+              placeholder={t ? t('searchLocation') : "🔍 Search for a location in Sri Lanka (e.g., Colombo, Kandy, Galle)..."}
               style={{
                 flex: 1,
                 padding: '12px 20px',

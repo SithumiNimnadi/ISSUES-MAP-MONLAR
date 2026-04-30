@@ -6,7 +6,6 @@ import ResearchPanel from './components/ResearchPanel';
 import DatabaseViewer from './components/DatabaseViewer';
 import ToastNotification from './components/ToastNotification';
 import NotificationBell from './components/NotificationBell';
-// In index.js or App.js
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import './components/Map.css';
@@ -16,8 +15,6 @@ import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import notificationService from './services/notificationService';
 import eventBridge from './services/eventBridge';
 import './App.css';
-import 'leaflet.markercluster/dist/MarkerCluster.css';
-import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 
 // Main App content that uses language
 function AppContent() {
