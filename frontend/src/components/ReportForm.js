@@ -305,7 +305,7 @@ function ReportForm({ selectedLocation, onSubmit, onGoToMap, language, t }) {
         </form>
 
         <div className="report-footer">
-          <p>💚 {t('footerMessage') || 'Every report helps create a cleaner, greener Sri Lanka'}</p>
+          <p>💚 {'Every report helps create a cleaner, greener Sri Lanka'}</p>
         </div>
       </div>
     </div>

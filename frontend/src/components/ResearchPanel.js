@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import './ResearchPanel.css';
 import EditResearchModal from './EditResearchModal';
@@ -94,18 +94,18 @@ function ResearchPanel({ language, t }) {
     setShowImageViewer(true);
   };
 
-  const closeImageViewer = () => {
+  const closeImageViewer = useCallback(() => {
     setShowImageViewer(false);
     setViewerImages([]);
-  };
+  }, []);
 
-  const nextImage = () => {
+  const nextImage = useCallback(() => {
     setCurrentImageIndex((prev) => (prev + 1) % viewerImages.length);
-  };
+  }, [viewerImages.length]);
 
-  const prevImage = () => {
+  const prevImage = useCallback(() => {
     setCurrentImageIndex((prev) => (prev - 1 + viewerImages.length) % viewerImages.length);
-  };
+  }, [viewerImages.length]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -116,7 +116,7 @@ function ResearchPanel({ language, t }) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showImageViewer, currentImageIndex]);
+  }, [showImageViewer, nextImage, prevImage, closeImageViewer]);
 
   useEffect(() => {
     const leavesContainer = document.createElement('div');
@@ -390,6 +390,13 @@ function ResearchPanel({ language, t }) {
     return link.substring(0, maxLength) + '...';
   };
 
+  // Helper function to truncate text
+  const truncateText = (text, maxLength = 50) => {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
   if (loading) {
     return (
       <div className="research-container">
@@ -594,18 +601,18 @@ function ResearchPanel({ language, t }) {
                 </div>
               )}
               <div className="research-card-badge">📄 {t('researchPaper') || 'Research Paper'}</div>
-              <h3>{item.title}</h3>
+              <h3>{truncateText(item.title, 40)}</h3>
               <div className="research-location"><i className="fas fa-map-marker-alt"></i> {item.district} {item.province && `, ${item.province}`}</div>
               <div className="research-meta">
-                {item.researcher && <span><i className="fas fa-user"></i> {item.researcher}</span>}
-                {item.organization && <span><i className="fas fa-building"></i> {item.organization}</span>}
+                {item.researcher && <span><i className="fas fa-user"></i> {truncateText(item.researcher, 25)}</span>}
+                {item.organization && <span><i className="fas fa-building"></i> {truncateText(item.organization, 25)}</span>}
               </div>
               
               <div className="research-date">
                 <i className="far fa-calendar-alt"></i> {t('published') || 'Published'}: {formatDate(item.uploadDate || item.createdAt)}
               </div>
               
-              <p className="research-description">{item.description}</p>
+              <p className="research-description">{truncateText(item.description, 100)}</p>
               
               {item.connectedIssues && item.connectedIssues.length > 0 && (
                 <div className="connected-issues-info">
@@ -613,7 +620,7 @@ function ResearchPanel({ language, t }) {
                   <div className="connected-issues-badges">
                     {item.connectedIssues.map((issue, idx) => (
                       <span key={idx} className="issue-badge-small">
-                        📋 {issue.title?.substring(0, 25)}{issue.title?.length > 25 ? '...' : ''}
+                        📋 {truncateText(issue.title, 25)}
                       </span>
                     ))}
                   </div>
@@ -646,6 +653,7 @@ function ResearchPanel({ language, t }) {
         </div>
       )}
 
+      {/* Connect to Issue Modal with shortened text */}
       {showConnectModal && (
         <div className="modal-overlay" onClick={() => setShowConnectModal(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -654,14 +662,14 @@ function ResearchPanel({ language, t }) {
               <button className="modal-close" onClick={() => setShowConnectModal(null)}>&times;</button>
             </div>
             <div className="modal-body">
-              <p><strong>{t('research') || 'Research'}:</strong> {showConnectModal.title}</p>
+              <p><strong>{t('research') || 'Research'}:</strong> {truncateText(showConnectModal.title, 50)}</p>
               <div className="form-group">
                 <label>{t('selectIssue') || 'Select Environmental Issue'}:</label>
                 <select value={selectedIssueId} onChange={(e) => setSelectedIssueId(e.target.value)}>
                   <option value="">-- {t('selectIssue') || 'Select an issue'} --</option>
                   {allIssues.filter(issue => issue.status !== 'resolved').map(issue => (
                     <option key={issue._id} value={issue._id}>
-                      {issue.title} - {issue.district}
+                      {truncateText(issue.title, 45)} - {issue.district}
                     </option>
                   ))}
                 </select>

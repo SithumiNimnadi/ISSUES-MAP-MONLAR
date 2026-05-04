@@ -112,7 +112,7 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
         if (onRefreshIssues) {
           await onRefreshIssues();
         }
-      }, 1000);
+      }, 200);
     }
     return result;
   };
@@ -543,70 +543,71 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
       )}
 
       {/* Connect Research Modal */}
-      {showConnectModal && (
-        <div className="modal-overlay" onClick={() => setShowConnectModal(null)}>
-          <div className="modal-content connect-research-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-custom">
-              <h3>🔗 {t('connectResearch')}</h3>
-              <button className="modal-close" onClick={() => setShowConnectModal(null)}>×</button>
-            </div>
-            <div className="modal-body-custom">
-              <p className="issue-info">
-                <strong>{t('issue') || 'Issue'}:</strong> {showConnectModal.title}
-              </p>
-              
-              {allResearch.length > 0 ? (
-                <>
-                  <label className="select-label">{t('selectResearch') || 'Select Existing Research'}:</label>
-                  <select 
-                    value={selectedResearchId} 
-                    onChange={(e) => setSelectedResearchId(e.target.value)}
-                    className="research-select"
-                  >
-                    <option value="">-- {t('selectResearch') || 'Select Research Paper'} --</option>
-                    {allResearch.map(r => (
-                      <option key={r._id} value={r._id}>
-                        {r.title} - {r.district}
-                      </option>
-                    ))}
-                  </select>
-                </>
-              ) : (
-                <div className="no-research-warning">
-                  <p>⚠️ {t('noResearchFound') || 'No research papers found.'}</p>
-                </div>
-              )}
-              
-              <div className="divider">
-                <span>OR</span>
-              </div>
-              
-              <button className="create-research-btn" onClick={goToResearchPanel}>
-                ✨ {t('createNewResearch') || 'Create New Research for this Issue'}
-              </button>
-            </div>
-            <div className="modal-footer-custom">
-              <button className="cancel-btn" onClick={() => {
-                setShowConnectModal(null);
-                setSelectedResearchId('');
-              }}>{t('cancel')}</button>
-              <button 
-                className="confirm-resolve-btn" 
-                disabled={!selectedResearchId || connecting}
-                onClick={async () => {
-                  const success = await handleConnectResearch(showConnectModal._id, selectedResearchId);
-                  if (success) {
-                    setShowConnectModal(null);
-                    setSelectedResearchId('');
-                  }
-                }}
-              >
-                {connecting ? `${t('connecting') || 'Connecting...'}` : t('connect') || 'Connect'}
-              </button>
-            </div>
+     {/* Connect Research Modal */}
+{showConnectModal && (
+  <div className="modal-overlay" onClick={() => setShowConnectModal(null)}>
+    <div className="modal-content connect-research-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-header-custom">
+        <h3>🔗 {t('connectResearch')}</h3>
+        <button className="modal-close" onClick={() => setShowConnectModal(null)}>×</button>
+      </div>
+      <div className="modal-body-custom">
+        <p className="issue-info">
+          <strong>{t('issue') || 'Issue'}:</strong> {showConnectModal.title}
+        </p>
+        
+        {allResearch.length > 0 ? (
+          <>
+            <label className="select-label">{t('selectResearch') || 'Select Existing Research'}:</label>
+            <select 
+              value={selectedResearchId} 
+              onChange={(e) => setSelectedResearchId(e.target.value)}
+              className="research-select"
+            >
+              <option value="">-- {t('selectResearch') || 'Select Research Paper'} --</option>
+              {allResearch.map(r => (
+                <option key={r._id} value={r._id}>
+                  {r.title.length > 50 ? r.title.substring(0, 50) + '...' : r.title} - {r.district}
+                </option>
+              ))}
+            </select>
+          </>
+        ) : (
+          <div className="no-research-warning">
+            <p>⚠️ {t('noResearchFound') || 'No research papers found.'}</p>
           </div>
+        )}
+        
+        <div className="divider">
+          <span>OR</span>
         </div>
-      )}
+        
+        <button className="create-research-btn" onClick={goToResearchPanel}>
+          ✨ {t('createNewResearch') || 'Create New Research for this Issue'}
+        </button>
+      </div>
+      <div className="modal-footer-custom">
+        <button className="cancel-btn" onClick={() => {
+          setShowConnectModal(null);
+          setSelectedResearchId('');
+        }}>{t('cancel')}</button>
+        <button 
+          className="confirm-resolve-btn" 
+          disabled={!selectedResearchId || connecting}
+          onClick={async () => {
+            const success = await handleConnectResearch(showConnectModal._id, selectedResearchId);
+            if (success) {
+              setShowConnectModal(null);
+              setSelectedResearchId('');
+            }
+          }}
+        >
+          {connecting ? `${t('connecting') || 'Connecting...'}` : t('connect') || 'Connect'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Full Edit Modal */}
       {showFullEditModal && (
