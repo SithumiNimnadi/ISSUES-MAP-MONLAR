@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
@@ -146,7 +146,10 @@ function Map({ issues, onMapClick, language, t }) {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [mapInitialized, setMapInitialized] = useState(false);
+  const mapInitializedRef = useRef(false);
+
+  // Wrap onMapClick in useCallback to stabilize it
+  const stableOnMapClick = useCallback(onMapClick, [onMapClick]);
 
   // Search location function
   const searchLocation = async (query) => {
@@ -171,53 +174,55 @@ function Map({ issues, onMapClick, language, t }) {
         setSearchResults(data);
         setShowSuggestions(true);
       } else {
-        const notification = document.createElement('div');
-        notification.textContent = 'No locations found. Try a different search term.';
-        notification.style.cssText = `
-          position: fixed;
-          top: 80px;
-          right: 20px;
-          background: #e74c3c;
-          color: white;
-          padding: 10px 20px;
-          border-radius: 8px;
-          z-index: 2000;
-          font-size: 14px;
-          animation: fadeOut 3s ease-in-out;
-        `;
-        document.body.appendChild(notification);
-        setTimeout(() => notification.remove(), 3000);
+        showNotification('No locations found. Try a different search term.', 'error');
       }
     } catch (error) {
       console.error('Error searching location:', error);
+      showNotification('Error searching location', 'error');
     } finally {
       setIsSearching(false);
     }
   };
 
+  const showNotification = (message, type = 'error') => {
+    const notification = document.createElement('div');
+    notification.textContent = message;
+    notification.style.cssText = `
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      background: ${type === 'error' ? '#e74c3c' : '#2d6a4f'};
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      z-index: 2000;
+      font-size: 14px;
+      animation: fadeOut 3s ease-in-out;
+    `;
+    document.body.appendChild(notification);
+    setTimeout(() => notification.remove(), 3000);
+  };
+
   // Fly to selected location
   const flyToLocation = (lat, lon, displayName) => {
     if (mapRef.current) {
-      // Disable animation temporarily to avoid errors
-      const originalZoomAnimation = mapRef.current.options.zoomAnimation;
-      mapRef.current.options.zoomAnimation = false;
+      const latNum = parseFloat(lat);
+      const lonNum = parseFloat(lon);
+      
+      if (isNaN(latNum) || isNaN(lonNum)) {
+        console.error('Invalid coordinates');
+        return;
+      }
       
       try {
-        mapRef.current.flyTo([parseFloat(lat), parseFloat(lon)], 14, {
+        mapRef.current.flyTo([latNum, lonNum], 14, {
           duration: 1.5,
           easeLinearity: 0.25
         });
       } catch (error) {
         console.warn('FlyTo error, using setView instead:', error);
-        mapRef.current.setView([parseFloat(lat), parseFloat(lon)], 14);
+        mapRef.current.setView([latNum, lonNum], 14);
       }
-      
-      // Restore animation
-      setTimeout(() => {
-        if (mapRef.current) {
-          mapRef.current.options.zoomAnimation = originalZoomAnimation;
-        }
-      }, 2000);
       
       // Remove previous search marker if exists
       if (searchMarkerRef.current) {
@@ -235,7 +240,7 @@ function Map({ issues, onMapClick, language, t }) {
         popupAnchor: [0, -20]
       });
       
-      searchMarkerRef.current = L.marker([parseFloat(lat), parseFloat(lon)], {
+      searchMarkerRef.current = L.marker([latNum, lonNum], {
         icon: searchIcon,
         zIndexOffset: 1000
       }).addTo(mapRef.current);
@@ -267,7 +272,7 @@ function Map({ issues, onMapClick, language, t }) {
     }
   };
 
-  // Initialize map
+  // Initialize map - only once
   useEffect(() => {
     // Make sure the map container exists
     const mapContainer = document.getElementById('map');
@@ -277,20 +282,23 @@ function Map({ issues, onMapClick, language, t }) {
     }
 
     // Check if map is already initialized
-    if (mapRef.current || mapInitialized) return;
+    if (mapInitializedRef.current || mapRef.current) {
+      return;
+    }
 
-    // Wait for container to be ready
+    // Small delay to ensure DOM is ready
     const timer = setTimeout(() => {
       try {
-        // Create map with safe options (disable animations to prevent errors)
+        // Create map with safe options
         mapRef.current = L.map('map', {
-          zoomAnimation: false,
-          fadeAnimation: false,
-          markerZoomAnimation: false,
-          inertia: false
+          zoomAnimation: true,
+          fadeAnimation: true,
+          markerZoomAnimation: true,
+          inertia: true,
+          zoomControl: true
         }).setView([7.8731, 80.7718], 7.5);
         
-        // Add tile layer
+        // Add tile layer with proper attribution
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
           subdomains: 'abcd',
@@ -343,11 +351,11 @@ function Map({ issues, onMapClick, language, t }) {
             `);
           }
           
-          onMapClick({ lat, lng, district: district || 'Unknown' });
+          stableOnMapClick({ lat, lng, district: district || 'Unknown' });
         });
         
         setMapLoaded(true);
-        setMapInitialized(true);
+        mapInitializedRef.current = true;
         console.log('Map initialized successfully');
         
         // Force a resize after map is loaded
@@ -360,42 +368,17 @@ function Map({ issues, onMapClick, language, t }) {
       } catch (error) {
         console.error('Error initializing map:', error);
       }
-    }, 150); // Increased delay to ensure DOM is ready
+    }, 150);
     
     return () => {
       clearTimeout(timer);
-      if (mapRef.current) {
-        try {
-          // Clean up marker cluster if exists
-          if (markerClusterRef.current) {
-            mapRef.current.removeLayer(markerClusterRef.current);
-            markerClusterRef.current = null;
-          }
-          // Clean up legend
-          if (legendRef.current) {
-            mapRef.current.removeControl(legendRef.current);
-            legendRef.current = null;
-          }
-          // Clean up search marker
-          if (searchMarkerRef.current) {
-            mapRef.current.removeLayer(searchMarkerRef.current);
-            searchMarkerRef.current = null;
-          }
-          // Remove map
-          mapRef.current.remove();
-        } catch (error) {
-          console.warn('Error cleaning up map:', error);
-        }
-        mapRef.current = null;
-        setMapLoaded(false);
-        setMapInitialized(false);
-      }
+      // Don't cleanup here to prevent map destruction on theme change
     };
-  }, [onMapClick]);
+  }, [stableOnMapClick]); // Add stableOnMapClick as dependency
 
-  // Display issue markers with clustering
+  // Update markers when issues change
   useEffect(() => {
-    if (!mapRef.current || !mapLoaded || !mapInitialized) {
+    if (!mapRef.current || !mapLoaded || !mapInitializedRef.current) {
       console.log('Map not ready for markers');
       return;
     }
@@ -417,13 +400,12 @@ function Map({ issues, onMapClick, language, t }) {
       return;
     }
     
-    // Create new marker cluster group with safe options
+    // Create new marker cluster group
     markerClusterRef.current = L.markerClusterGroup({
       maxClusterRadius: 80,
       spiderfyOnMaxZoom: true,
       showCoverageOnHover: true,
       zoomToBoundsOnClick: true,
-      animateAddingMarkers: false, // Disable animation to prevent errors
       disableClusteringAtZoom: 18,
       iconCreateFunction: function(cluster) {
         const childCount = cluster.getChildCount();
@@ -453,7 +435,6 @@ function Map({ issues, onMapClick, language, t }) {
     
     // Add markers for each issue
     let addedCount = 0;
-    const markers = [];
     
     issues.forEach(issue => {
       // Validate coordinates
@@ -529,7 +510,6 @@ function Map({ issues, onMapClick, language, t }) {
         });
         
         markerClusterRef.current.addLayer(marker);
-        markers.push(marker);
         addedCount++;
       } catch (error) {
         console.warn('Error adding marker for issue:', issue._id, error);
@@ -544,20 +524,6 @@ function Map({ issues, onMapClick, language, t }) {
       } catch (error) {
         console.warn('Error adding cluster layer to map:', error);
       }
-      
-      // Fit bounds to show all markers (with delay)
-      setTimeout(() => {
-        if (markerClusterRef.current && mapRef.current) {
-          try {
-            const bounds = markerClusterRef.current.getBounds();
-            if (bounds && bounds.isValid()) {
-              mapRef.current.fitBounds(bounds, { padding: [50, 50] });
-            }
-          } catch (error) {
-            console.warn('Error fitting bounds:', error);
-          }
-        }
-      }, 300);
     }
     
     // Add legend (only if not already added)
@@ -643,22 +609,14 @@ function Map({ issues, onMapClick, language, t }) {
       }
     }
     
-  }, [issues, mapLoaded, mapInitialized]);
+  }, [issues, mapLoaded]); // Only depend on issues and mapLoaded
   
   const fitBoundsToMarkers = () => {
     if (markerClusterRef.current && issues.length > 0 && mapRef.current) {
       try {
         const bounds = markerClusterRef.current.getBounds();
         if (bounds && bounds.isValid()) {
-          // Disable animation temporarily
-          const originalZoomAnimation = mapRef.current.options.zoomAnimation;
-          mapRef.current.options.zoomAnimation = false;
           mapRef.current.fitBounds(bounds, { padding: [50, 50] });
-          setTimeout(() => {
-            if (mapRef.current) {
-              mapRef.current.options.zoomAnimation = originalZoomAnimation;
-            }
-          }, 500);
         }
       } catch (error) {
         console.warn('Error fitting bounds:', error);
@@ -686,7 +644,6 @@ function Map({ issues, onMapClick, language, t }) {
             borderRadius: '50px',
             boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
             padding: '5px',
-            backdropFilter: 'blur(10px)',
           }}>
             <input
               type="text"
