@@ -1595,3 +1595,196 @@ body.dark .research-location {
     align-items: flex-start;
   }
 }
+/* Clickable badges styling */
+.clickable-badge {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.clickable-badge:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Research badge specific */
+.research-badge.clickable-badge {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  transition: all 0.3s;
+}
+
+.research-badge.clickable-badge:hover {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(60, 122, 77, 0.4);
+}
+
+/* Issue badge specific */
+.issue-badge-small.clickable-badge {
+  background: linear-gradient(135deg, var(--secondary), var(--secondary-light));
+  color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  transition: all 0.3s;
+}
+
+.issue-badge-small.clickable-badge:hover {
+  background: linear-gradient(135deg, var(--secondary-dark), var(--secondary));
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(217, 122, 43, 0.4);
+}
+
+/* Dark mode support */
+body.dark .research-badge.clickable-badge {
+  background: linear-gradient(135deg, var(--primary-light), var(--primary));
+}
+
+body.dark .issue-badge-small.clickable-badge {
+  background: linear-gradient(135deg, var(--secondary-light), var(--secondary));
+}
+
+/* Connected badges containers */
+.connected-badges,
+.connected-issues-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.connected-badge,
+.issue-badge-small {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* Highlight effect for research card */
+.research-card.highlighted {
+  animation: highlightPulse 0.5s ease-in-out 3;
+  background: linear-gradient(135deg, rgba(60, 122, 77, 0.1), rgba(87, 154, 107, 0.15));
+  border: 2px solid var(--secondary);
+  box-shadow: 0 8px 25px rgba(60, 122, 77, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.research-card.highlighted::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.3), 
+    transparent);
+  animation: shimmer 1.5s infinite;
+  pointer-events: none;
+}
+
+@keyframes highlightPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 15px rgba(60, 122, 77, 0.2);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 8px 25px rgba(60, 122, 77, 0.4);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+body.dark .research-card.highlighted {
+  background: linear-gradient(135deg, rgba(60, 122, 77, 0.2), rgba(87, 154, 107, 0.25));
+  border-color: var(--secondary-light);
+}
+
+/* Tooltip effect on hover */
+.clickable-badge {
+  cursor: pointer;
+  position: relative;
+}
+
+.clickable-badge:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 1000;
+  pointer-events: none;
+  margin-bottom: 5px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .clickable-badge:hover::after {
+    display: none;
+  }
+  
+  .research-badge.clickable-badge,
+  .issue-badge-small.clickable-badge {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+  }
+}
+/* Smooth scrolling for the research container */
+.research-container {
+  scroll-behavior: smooth;
+}
+
+/* Research card highlight animation */
+.research-card.highlighted {
+  animation: researchHighlightPulse 0.6s ease-in-out 3;
+  background: linear-gradient(135deg, rgba(60, 122, 77, 0.15), rgba(87, 154, 107, 0.2));
+  border: 2px solid #e67e22;
+  box-shadow: 0 8px 30px rgba(60, 122, 77, 0.4);
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+@keyframes researchHighlightPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 15px rgba(60, 122, 77, 0.2);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 8px 30px rgba(60, 122, 77, 0.5);
+  }
+}
+
+/* Dark mode support */
+body.dark .research-card.highlighted {
+  background: linear-gradient(135deg, rgba(60, 122, 77, 0.25), rgba(87, 154, 107, 0.35));
+  border-color: #f4a261;
+}

@@ -53,10 +53,111 @@ function ResearchPanel({ language, t }) {
 
   const provinces = ['Western', 'Central', 'Southern', 'Northern', 'Eastern', 'North Western', 'North Central', 'Uva', 'Sabaragamuwa'];
 
+  // Navigate to issue panel and highlight specific issue
+  const navigateToIssue = (issueId, issueTitle) => {
+    // Navigate to issues panel
+    const issuesTabButton = document.querySelector('.nav-tabs button:nth-child(3)');
+    if (issuesTabButton) {
+      issuesTabButton.click();
+    }
+    
+    // Store the issue ID to highlight
+    sessionStorage.setItem('highlightIssueId', issueId);
+    sessionStorage.setItem('scrollToIssueId', issueId);
+    
+    // Show toast notification
+    const toastEvent = new CustomEvent('showToast', {
+      detail: {
+        message: `📍 Navigating to: ${issueTitle.substring(0, 50)}`,
+        type: 'info'
+      }
+    });
+    window.dispatchEvent(toastEvent);
+  };
+
   useEffect(() => {
     loadResearch();
     loadIssues();
   }, []);
+
+  // Handle highlighting from sessionStorage when component mounts or research changes
+  useEffect(() => {
+    // Check if there's a research to highlight
+    const highlightResearchId = sessionStorage.getItem('highlightResearchId');
+    const scrollToResearchId = sessionStorage.getItem('scrollToResearchId');
+    
+    if (highlightResearchId && allResearch.length > 0) {
+      // Clear the stored IDs immediately to prevent re-highlighting
+      sessionStorage.removeItem('highlightResearchId');
+      sessionStorage.removeItem('scrollToResearchId');
+      
+      // Function to find and highlight the research card
+      const findAndHighlightResearch = () => {
+        const targetElement = document.getElementById(`research-${highlightResearchId}`);
+        
+        if (targetElement) {
+          // Remove any existing highlights
+          document.querySelectorAll('.research-card.highlighted').forEach(card => {
+            card.classList.remove('highlighted');
+          });
+          
+          // Add highlight class
+          targetElement.classList.add('highlighted');
+          
+          // Scroll to the element
+          targetElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center'
+          });
+          
+          // Flash effect for better visibility
+          let flashCount = 0;
+          const originalTransform = targetElement.style.transform;
+          const flashInterval = setInterval(() => {
+            if (flashCount >= 3) {
+              clearInterval(flashInterval);
+              // Remove highlight after 3 seconds
+              setTimeout(() => {
+                targetElement.classList.remove('highlighted');
+                targetElement.style.transform = originalTransform;
+              }, 3000);
+            } else {
+              targetElement.style.transform = 'scale(1.02)';
+              setTimeout(() => {
+                if (targetElement) {
+                  targetElement.style.transform = originalTransform;
+                }
+              }, 200);
+              flashCount++;
+            }
+          }, 400);
+          
+          // Show success notification
+          const toastEvent = new CustomEvent('showToast', {
+            detail: {
+              message: `✓ Found: ${targetElement.querySelector('h3')?.textContent || 'Research'}`,
+              type: 'success'
+            }
+          });
+          window.dispatchEvent(toastEvent);
+          
+          return true;
+        }
+        return false;
+      };
+      
+      // Try immediately
+      if (!findAndHighlightResearch()) {
+        // If not found, try after delays (for when research is still loading)
+        const delays = [300, 500, 1000, 1500];
+        delays.forEach(delay => {
+          setTimeout(() => {
+            findAndHighlightResearch();
+          }, delay);
+        });
+      }
+    }
+  }, [allResearch]); // Run when research changes
 
   const loadResearch = async () => {
     try {
@@ -592,7 +693,7 @@ function ResearchPanel({ language, t }) {
       ) : (
         <div className="research-grid">
           {allResearch.map(item => (
-            <div key={item._id} className="research-card">
+            <div key={item._id} id={`research-${item._id}`} data-research-id={item._id} className="research-card">
               {item.images && item.images.length > 0 && (
                 <div className="research-card-image" onClick={() => openImageViewer(item.images, item.title, 'images')}>
                   <img src={`${API_URL}${item.images[0]}`} alt={item.title} />
@@ -619,8 +720,13 @@ function ResearchPanel({ language, t }) {
                   <strong>🔗 {t('connectedIssues') || 'Connected Issues'} ({item.connectedIssues.length}):</strong>
                   <div className="connected-issues-badges">
                     {item.connectedIssues.map((issue, idx) => (
-                      <span key={idx} className="issue-badge-small">
-                        📋 {truncateText(issue.title, 25)}
+                      <span 
+                        key={idx} 
+                        className="issue-badge-small clickable-badge"
+                        title={`Click to view: ${issue.title}`}
+                        onClick={() => navigateToIssue(issue._id, issue.title)}
+                      >
+                        📋 {issue.title?.substring(0, 25)}{issue.title?.length > 25 ? '...' : ''}
                       </span>
                     ))}
                   </div>
@@ -653,7 +759,7 @@ function ResearchPanel({ language, t }) {
         </div>
       )}
 
-      {/* Connect to Issue Modal with shortened text */}
+      {/* Connect to Issue Modal */}
       {showConnectModal && (
         <div className="modal-overlay" onClick={() => setShowConnectModal(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -774,6 +880,28 @@ function ResearchPanel({ language, t }) {
                     <a key={idx} href={`${API_URL}${pdf}`} target="_blank" className="pdf-link" rel="noopener noreferrer">
                       <i className="fas fa-download"></i> {t('download') || 'Download'} {t('document') || 'Document'} {idx + 1}
                     </a>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Connected Issues in Modal */}
+            {selectedResearch.connectedIssues && selectedResearch.connectedIssues.length > 0 && (
+              <div className="modal-section">
+                <h3><i className="fas fa-link"></i> 🔗 {t('connectedIssues') || 'Connected Issues'} ({selectedResearch.connectedIssues.length})</h3>
+                <div className="connected-issues-badges">
+                  {selectedResearch.connectedIssues.map((issue, idx) => (
+                    <span 
+                      key={idx} 
+                      className="issue-badge-small clickable-badge"
+                      title={`Click to view: ${issue.title}`}
+                      onClick={() => {
+                        navigateToIssue(issue._id, issue.title);
+                        closeDetails();
+                      }}
+                    >
+                      📋 {issue.title?.substring(0, 40)}{issue.title?.length > 40 ? '...' : ''}
+                    </span>
                   ))}
                 </div>
               </div>

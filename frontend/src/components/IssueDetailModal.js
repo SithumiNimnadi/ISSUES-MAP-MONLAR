@@ -13,18 +13,20 @@ const IssueDetailModal = ({ issue, onClose }) => {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [onClose]);
 
-  // Function to navigate to issues list
+  // Function to navigate to issues list and highlight specific issue
   const goToIssuesList = () => {
     // Find and click the Issues tab button (3rd button in nav-tabs)
     const issuesTabButton = document.querySelector('.nav-tabs button:nth-child(3)');
     if (issuesTabButton) {
       issuesTabButton.click();
     }
+    
     // Close the modal
     onClose();
     
-    // Optional: Store the issue ID to highlight it in the issues list
+    // Store the issue ID to highlight and scroll to it
     sessionStorage.setItem('highlightIssueId', issue._id);
+    sessionStorage.setItem('scrollToIssueId', issue._id);
     
     // Show a toast notification
     const toastEvent = new CustomEvent('showToast', {
@@ -34,6 +36,93 @@ const IssueDetailModal = ({ issue, onClose }) => {
       }
     });
     window.dispatchEvent(toastEvent);
+    
+    // Use a small delay to ensure the issues list is rendered
+    setTimeout(() => {
+      highlightAndScrollToIssue(issue._id);
+    }, 500);
+  };
+  
+  // Function to highlight and scroll to the specific issue
+  const highlightAndScrollToIssue = (issueId) => {
+    // Try to find the issue card
+    let targetElement = document.getElementById(`issue-${issueId}`);
+    
+    // If not found, try with different selector patterns
+    if (!targetElement) {
+      targetElement = document.querySelector(`[data-issue-id="${issueId}"]`);
+    }
+    
+    if (!targetElement) {
+      targetElement = document.querySelector(`.issue-card[data-id="${issueId}"]`);
+    }
+    
+    if (targetElement) {
+      // Remove any existing highlights
+      document.querySelectorAll('.issue-card.highlighted').forEach(card => {
+        card.classList.remove('highlighted');
+      });
+      
+      // Add highlight class
+      targetElement.classList.add('highlighted');
+      
+      // Scroll to the element with smooth behavior
+      targetElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center',
+        inline: 'nearest'
+      });
+      
+      // Flash effect for better visibility
+      let flashCount = 0;
+      const flashInterval = setInterval(() => {
+        if (flashCount >= 3) {
+          clearInterval(flashInterval);
+          // Remove highlight after flashing
+          setTimeout(() => {
+            targetElement.classList.remove('highlighted');
+          }, 2000);
+        } else {
+          targetElement.style.transform = 'scale(1.02)';
+          setTimeout(() => {
+            if (targetElement) {
+              targetElement.style.transform = '';
+            }
+          }, 200);
+          flashCount++;
+        }
+      }, 400);
+      
+      // Show success notification
+      const toastEvent = new CustomEvent('showToast', {
+        detail: {
+          message: `✓ Found: ${issue.title}`,
+          type: 'success'
+        }
+      });
+      window.dispatchEvent(toastEvent);
+    } else {
+      // If element not found immediately, try again after a delay
+      setTimeout(() => {
+        const retryElement = document.getElementById(`issue-${issueId}`);
+        if (retryElement) {
+          retryElement.classList.add('highlighted');
+          retryElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center'
+          });
+        } else {
+          // Show error if still not found
+          const toastEvent = new CustomEvent('showToast', {
+            detail: {
+              message: `⚠️ Could not locate the specific issue, but you're in the issues list`,
+              type: 'warning'
+            }
+          });
+          window.dispatchEvent(toastEvent);
+        }
+      }, 1000);
+    }
   };
 
   // Return null if no issue (after all hooks)

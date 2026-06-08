@@ -53,6 +53,47 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
     return icons[category];
   };
 
+  // Navigate to research panel and highlight specific research
+  const navigateToResearch = (researchId, researchTitle) => {
+    // Navigate to research panel (4th button - index 3)
+    const researchTabButton = document.querySelector('.nav-tabs button:nth-child(4)');
+    if (researchTabButton) {
+      researchTabButton.click();
+    }
+    
+    // Store the research ID to highlight
+    sessionStorage.setItem('highlightResearchId', researchId);
+    sessionStorage.setItem('scrollToResearchId', researchId);
+    
+    // Also store a timestamp to ensure it's a fresh navigation
+    sessionStorage.setItem('researchNavTimestamp', Date.now().toString());
+    
+    // Show toast notification
+    const toastEvent = new CustomEvent('showToast', {
+      detail: {
+        message: `🔬 Navigating to: ${researchTitle.substring(0, 50)}`,
+        type: 'info'
+      }
+    });
+    window.dispatchEvent(toastEvent);
+    
+    // Force a small delay to ensure the research panel is loaded
+    setTimeout(() => {
+      // Try to find and scroll to the research card even if the highlight effect didn't trigger
+      const targetElement = document.getElementById(`research-${researchId}`);
+      if (targetElement) {
+        targetElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center'
+        });
+        targetElement.classList.add('highlighted');
+        setTimeout(() => {
+          targetElement.classList.remove('highlighted');
+        }, 3000);
+      }
+    }, 800);
+  };
+
   useEffect(() => {
     console.log('📋 Issues updated in IssuesList:', issues.length);
   }, [issues]);
@@ -60,6 +101,86 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
   useEffect(() => {
     loadResearch();
   }, []);
+
+  // Handle highlighting from sessionStorage when component mounts or issues change
+  useEffect(() => {
+    // Check if there's an issue to highlight from sessionStorage
+    const highlightIssueId = sessionStorage.getItem('highlightIssueId');
+    const scrollToIssueId = sessionStorage.getItem('scrollToIssueId');
+    
+    if (highlightIssueId) {
+      // Clear the stored IDs after using them
+      sessionStorage.removeItem('highlightIssueId');
+      
+      // Find the element
+      const targetElement = document.getElementById(`issue-${highlightIssueId}`);
+      
+      if (targetElement) {
+        // Remove any existing highlights
+        document.querySelectorAll('.issue-card.highlighted').forEach(card => {
+          card.classList.remove('highlighted');
+        });
+        
+        // Add highlight class
+        targetElement.classList.add('highlighted');
+        
+        // Scroll to the element if needed
+        if (scrollToIssueId) {
+          sessionStorage.removeItem('scrollToIssueId');
+          targetElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center'
+          });
+        }
+        
+        // Flash effect for better visibility
+        let flashCount = 0;
+        const flashInterval = setInterval(() => {
+          if (flashCount >= 3) {
+            clearInterval(flashInterval);
+            // Remove highlight after 3 seconds
+            setTimeout(() => {
+              targetElement.classList.remove('highlighted');
+            }, 3000);
+          } else {
+            targetElement.style.transform = 'scale(1.02)';
+            setTimeout(() => {
+              if (targetElement) {
+                targetElement.style.transform = '';
+              }
+            }, 200);
+            flashCount++;
+          }
+        }, 400);
+        
+        // Show success notification
+        const toastEvent = new CustomEvent('showToast', {
+          detail: {
+            message: `✓ Found: ${targetElement.querySelector('h3')?.textContent || 'Issue'}`,
+            type: 'success'
+          }
+        });
+        window.dispatchEvent(toastEvent);
+      } else {
+        // If element not found immediately, try again after a delay
+        setTimeout(() => {
+          const retryElement = document.getElementById(`issue-${highlightIssueId}`);
+          if (retryElement) {
+            retryElement.classList.add('highlighted');
+            retryElement.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center'
+            });
+            
+            // Remove highlight after 3 seconds
+            setTimeout(() => {
+              retryElement.classList.remove('highlighted');
+            }, 3000);
+          }
+        }, 1000);
+      }
+    }
+  }, [issues]); // Run when issues change
 
   const loadResearch = async () => {
     try {
@@ -332,7 +453,7 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
           </div>
         ) : (
           filteredIssues.map(issue => (
-            <div key={issue._id} id={`issue-${issue._id}`} className="issue-card">
+            <div key={issue._id} id={`issue-${issue._id}`} data-issue-id={issue._id} className="issue-card">
               <div className="issue-badge" data-status={issue.status}>
                 {issue.status === 'resolved' ? `✓ ${t('resolved')}` : `⏳ ${t('pending') || 'Pending'}`}
               </div>
@@ -359,7 +480,12 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
                   <strong>🔗 {t('connectedResearch') || 'Connected Research'} ({issue.connectedResearch.length}):</strong>
                   <div className="connected-badges">
                     {issue.connectedResearch.map((research, idx) => (
-                      <span key={idx} className="connected-badge research-badge" title={research.title}>
+                      <span 
+                        key={idx} 
+                        className="connected-badge research-badge clickable-badge"
+                        title={`Click to view: ${research.title}`}
+                        onClick={() => navigateToResearch(research._id, research.title)}
+                      >
                         📚 {research.title?.substring(0, 30)}{research.title?.length > 30 ? '...' : ''}
                       </span>
                     ))}
@@ -543,71 +669,70 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
       )}
 
       {/* Connect Research Modal */}
-     {/* Connect Research Modal */}
-{showConnectModal && (
-  <div className="modal-overlay" onClick={() => setShowConnectModal(null)}>
-    <div className="modal-content connect-research-modal" onClick={(e) => e.stopPropagation()}>
-      <div className="modal-header-custom">
-        <h3>🔗 {t('connectResearch')}</h3>
-        <button className="modal-close" onClick={() => setShowConnectModal(null)}>×</button>
-      </div>
-      <div className="modal-body-custom">
-        <p className="issue-info">
-          <strong>{t('issue') || 'Issue'}:</strong> {showConnectModal.title}
-        </p>
-        
-        {allResearch.length > 0 ? (
-          <>
-            <label className="select-label">{t('selectResearch') || 'Select Existing Research'}:</label>
-            <select 
-              value={selectedResearchId} 
-              onChange={(e) => setSelectedResearchId(e.target.value)}
-              className="research-select"
-            >
-              <option value="">-- {t('selectResearch') || 'Select Research Paper'} --</option>
-              {allResearch.map(r => (
-                <option key={r._id} value={r._id}>
-                  {r.title.length > 50 ? r.title.substring(0, 50) + '...' : r.title} - {r.district}
-                </option>
-              ))}
-            </select>
-          </>
-        ) : (
-          <div className="no-research-warning">
-            <p>⚠️ {t('noResearchFound') || 'No research papers found.'}</p>
+      {showConnectModal && (
+        <div className="modal-overlay" onClick={() => setShowConnectModal(null)}>
+          <div className="modal-content connect-research-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-custom">
+              <h3>🔗 {t('connectResearch')}</h3>
+              <button className="modal-close" onClick={() => setShowConnectModal(null)}>×</button>
+            </div>
+            <div className="modal-body-custom">
+              <p className="issue-info">
+                <strong>{t('issue') || 'Issue'}:</strong> {showConnectModal.title}
+              </p>
+              
+              {allResearch.length > 0 ? (
+                <>
+                  <label className="select-label">{t('selectResearch') || 'Select Existing Research'}:</label>
+                  <select 
+                    value={selectedResearchId} 
+                    onChange={(e) => setSelectedResearchId(e.target.value)}
+                    className="research-select"
+                  >
+                    <option value="">-- {t('selectResearch') || 'Select Research Paper'} --</option>
+                    {allResearch.map(r => (
+                      <option key={r._id} value={r._id}>
+                        {r.title.length > 50 ? r.title.substring(0, 50) + '...' : r.title} - {r.district}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              ) : (
+                <div className="no-research-warning">
+                  <p>⚠️ {t('noResearchFound') || 'No research papers found.'}</p>
+                </div>
+              )}
+              
+              <div className="divider">
+                <span>OR</span>
+              </div>
+              
+              <button className="create-research-btn" onClick={goToResearchPanel}>
+                ✨ {t('createNewResearch') || 'Create New Research for this Issue'}
+              </button>
+            </div>
+            <div className="modal-footer-custom">
+              <button className="cancel-btn" onClick={() => {
+                setShowConnectModal(null);
+                setSelectedResearchId('');
+              }}>{t('cancel')}</button>
+              <button 
+                className="confirm-resolve-btn" 
+                disabled={!selectedResearchId || connecting}
+                onClick={async () => {
+                  const success = await handleConnectResearch(showConnectModal._id, selectedResearchId);
+                  if (success) {
+                    setShowConnectModal(null);
+                    setSelectedResearchId('');
+                  }
+                }}
+              >
+                {connecting ? `${t('connecting') || 'Connecting...'}` : t('connect') || 'Connect'}
+              </button>
+            </div>
           </div>
-        )}
-        
-        <div className="divider">
-          <span>OR</span>
         </div>
-        
-        <button className="create-research-btn" onClick={goToResearchPanel}>
-          ✨ {t('createNewResearch') || 'Create New Research for this Issue'}
-        </button>
-      </div>
-      <div className="modal-footer-custom">
-        <button className="cancel-btn" onClick={() => {
-          setShowConnectModal(null);
-          setSelectedResearchId('');
-        }}>{t('cancel')}</button>
-        <button 
-          className="confirm-resolve-btn" 
-          disabled={!selectedResearchId || connecting}
-          onClick={async () => {
-            const success = await handleConnectResearch(showConnectModal._id, selectedResearchId);
-            if (success) {
-              setShowConnectModal(null);
-              setSelectedResearchId('');
-            }
-          }}
-        >
-          {connecting ? `${t('connecting') || 'Connecting...'}` : t('connect') || 'Connect'}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+      )}
 
       {/* Full Edit Modal */}
       {showFullEditModal && (
