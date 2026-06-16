@@ -22,6 +22,12 @@ const IssueDetailModal = ({ issue, onClose }) => {
     sessionStorage.setItem('forceHighlight', 'true');
     sessionStorage.setItem('targetTitle', issue.title);
     
+    // Find and click Issues tab (3rd button)
+    const issuesTabButton = document.querySelector('.nav-tabs button:nth-child(2)');
+    if (issuesTabButton) {
+      issuesTabButton.click();
+    }
+    
     // Show toast
     const toastEvent = new CustomEvent('showToast', {
       detail: {
@@ -31,61 +37,9 @@ const IssueDetailModal = ({ issue, onClose }) => {
     });
     window.dispatchEvent(toastEvent);
     
-    // 🔥 Wait for modal to close and DOM to update
-    setTimeout(() => {
-      try {
-        const userRole = localStorage.getItem('userRole') || 'guest';
-        console.log("Current user role:", userRole);
-
-        let issuesTabButton = null;
-
-        // Role එක අනුව tab එක select කරන්න
-        if (userRole === "admin") {
-          // Admin - 3rd tab (index 3)
-          issuesTabButton = document.querySelector('.nav-tabs button:nth-child(3)');
-          console.log("👑 Admin mode: Selecting 3rd tab");
-        } else {
-          // User or Guest - 2nd tab (index 2)
-          issuesTabButton = document.querySelector('.nav-tabs button:nth-child(2)');
-          console.log("👤 User/Guest mode: Selecting 2nd tab");
-        }
-        
-        // Click the tab if found
-        if (issuesTabButton) {
-          issuesTabButton.click();
-          console.log("✅ Tab clicked successfully");
-          
-          // 🔥 Start highlighting after tab switch
-          setTimeout(() => {
-            findAndHighlightIssue();
-          }, 500);
-        } else {
-          console.warn("⚠️ Tab element not found");
-          // Fallback: Try to find by text content
-          const fallbackTab = Array.from(document.querySelectorAll('.nav-tabs button'))
-            .find(btn => btn.textContent.includes('📋') || 
-                           btn.textContent.toLowerCase().includes('issues'));
-          if (fallbackTab) {
-            fallbackTab.click();
-            console.log("✅ Fallback tab clicked");
-            setTimeout(() => {
-              findAndHighlightIssue();
-            }, 500);
-          } else {
-            console.error("❌ No tab found!");
-          }
-        }
-      } catch (error) {
-        console.error("❌ Error in tab navigation:", error);
-      }
-    }, 300);
-  };
-
-  // 🔥 Separate function for finding and highlighting
-  const findAndHighlightIssue = () => {
-    console.log("🔍 Searching for issue:", issue._id);
+    // Find and highlight after navigation
     let attempts = 0;
-    const maxAttempts = 40;
+    const maxAttempts = 30;
     
     const findAndHighlight = setInterval(() => {
       attempts++;
@@ -93,73 +47,43 @@ const IssueDetailModal = ({ issue, onClose }) => {
       
       if (targetElement) {
         clearInterval(findAndHighlight);
-        console.log("✅ Issue found!", targetElement);
         
-        // Remove existing highlights
         document.querySelectorAll('.issue-card.highlighted').forEach(card => {
           card.classList.remove('highlighted');
         });
         
-        // Add highlight
         targetElement.classList.add('highlighted');
         targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         
-        // Flash animation
         let flashCount = 0;
         const flashInterval = setInterval(() => {
           if (flashCount >= 3) {
             clearInterval(flashInterval);
             setTimeout(() => {
-              if (targetElement) {
-                targetElement.classList.remove('highlighted');
-              }
+              targetElement.classList.remove('highlighted');
             }, 2000);
           } else {
             targetElement.style.transform = 'scale(1.02)';
-            targetElement.style.transition = 'transform 0.15s ease';
             setTimeout(() => {
-              if (targetElement) {
-                targetElement.style.transform = 'scale(1)';
-              }
+              if (targetElement) targetElement.style.transform = '';
             }, 150);
             flashCount++;
           }
         }, 300);
         
-        // Success toast
         const successEvent = new CustomEvent('showToast', {
-          detail: { 
-            message: `✅ Found: ${issue.title}`, 
-            type: 'success' 
-          }
+          detail: { message: `✅ Found: ${issue.title}`, type: 'success' }
         });
         window.dispatchEvent(successEvent);
         
-        // Clean up session storage
         sessionStorage.removeItem('highlightIssueId');
         sessionStorage.removeItem('scrollToIssueId');
         sessionStorage.removeItem('forceHighlight');
         sessionStorage.removeItem('targetTitle');
-        
       } else if (attempts >= maxAttempts) {
         clearInterval(findAndHighlight);
-        console.warn("⚠️ Issue element not found after", maxAttempts, "attempts");
-        
-        // Try to find by different selector
-        const altElement = document.querySelector(`[data-issue-id="${issue._id}"]`) ||
-                          document.querySelector(`.issue-item[data-id="${issue._id}"]`);
-        if (altElement) {
-          console.log("✅ Found using alternative selector!");
-          altElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          altElement.style.border = '3px solid #2d6a4f';
-          altElement.style.boxShadow = '0 0 20px rgba(45, 106, 79, 0.5)';
-          setTimeout(() => {
-            altElement.style.border = '';
-            altElement.style.boxShadow = '';
-          }, 3000);
-        }
       }
-    }, 300);
+    }, 200);
   };
 
   if (!issue) return null;
