@@ -625,3 +625,82 @@
   width: 300px;
   height: 300px;
 }
+/* Connected Research Badges in Modal */
+.connected-research-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.connected-research-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, #4caf50, #388e3c);
+  color: white;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+body.dark .connected-research-badge {
+  background: linear-gradient(135deg, #2e7d32, #1b5e20);
+}
+
+/* Modal Footer Buttons */
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  border-top: 1px solid #e0e0e0;
+  background: #f8f9fa;
+}
+
+body.dark .modal-footer {
+  background: #14141f;
+  border-top-color: #2d2d3f;
+}
+
+.go-to-list-btn {
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #2d6a4f, #1b4332);
+  color: white;
+  border: none;
+  border-radius: 40px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.go-to-list-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(45, 106, 79, 0.3);
+}
+
+.close-modal-btn {
+  padding: 10px 24px;
+  background: #95a5a6;
+  color: white;
+  border: none;
+  border-radius: 40px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.close-modal-btn:hover {
+  background: #7f8c8d;
+  transform: translateY(-2px);
+}
+
+body.dark .close-modal-btn {
+  background: #2d2d3f;
+  color: white;
+}
+
+body.dark .close-modal-btn:hover {
+  background: #3d3d4f;
+}

@@ -1702,3 +1702,344 @@ body.dark ::-webkit-scrollbar-thumb {
 .leaflet-tile-pane {
   filter: none !important;
 }
+/* ======================================== */
+/* USER INFO STYLES - Enhanced Beautiful Design */
+/* ======================================== */
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  padding: 6px 20px 6px 16px;
+  border-radius: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.user-info::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.user-info:hover::before {
+  left: 100%;
+}
+
+.user-info:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* User Role Badge */
+.user-role {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 40px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1));
+  backdrop-filter: blur(5px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Admin specific styling */
+.user-role:contains('👑 Admin') {
+  background: linear-gradient(135deg, #f4a261, #e76f51);
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* User Name */
+.user-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: white;
+  letter-spacing: 0.3px;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 4px 0;
+  border-bottom: 2px solid transparent;
+  transition: border-color 0.3s ease;
+}
+
+.user-info:hover .user-name {
+  border-bottom-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Logout Button */
+.logout-btn {
+  background: rgba(231, 76, 60, 0.9);
+  border: none;
+  padding: 6px 16px;
+  border-radius: 40px;
+  color: white;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  backdrop-filter: blur(5px);
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+}
+
+.logout-btn::before {
+  content: '→';
+  position: absolute;
+  right: -20px;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+  background: #e74c3c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+  padding-right: 28px;
+}
+
+.logout-btn:hover::before {
+  right: 12px;
+  opacity: 1;
+}
+
+.logout-btn:active {
+  transform: translateY(0);
+}
+
+/* Dark Mode Support for User Info */
+body.dark .user-info {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark .user-info:hover {
+  background: rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+body.dark .user-role {
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.2));
+}
+
+body.dark .logout-btn {
+  background: rgba(231, 76, 60, 0.8);
+}
+
+body.dark .logout-btn:hover {
+  background: #e74c3c;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .user-info {
+    padding: 4px 12px 4px 12px;
+    gap: 8px;
+  }
+  
+  .user-name {
+    max-width: 100px;
+    font-size: 0.8rem;
+  }
+  
+  .user-role {
+    padding: 3px 8px;
+    font-size: 0.65rem;
+  }
+  
+  .logout-btn {
+    padding: 4px 12px;
+    font-size: 0.7rem;
+  }
+  
+  .logout-btn:hover {
+    padding-right: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-name {
+    display: none;
+  }
+  
+  .user-info {
+    padding: 4px 8px;
+  }
+  
+  .user-role {
+    font-size: 0.6rem;
+  }
+  
+  .logout-btn {
+    padding: 4px 10px;
+    font-size: 0.65rem;
+  }
+}
+
+/* Animation for user login */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.user-info {
+  animation: slideInRight 0.4s ease-out;
+}
+/* Make user info clickable */
+.user-info {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  padding: 6px 20px 6px 16px;
+  border-radius: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.user-info:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.user-info:active {
+  transform: translateY(0);
+}
+
+/* Tooltip to indicate clickable */
+.user-info::after {
+  content: '📊 Click to go to Dashboard';
+  position: absolute;
+  bottom: -35px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s;
+  pointer-events: none;
+  z-index: 1000;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.user-info:hover::after {
+  opacity: 1;
+  visibility: visible;
+  bottom: -30px;
+}
+
+/* User Role Badge */
+.user-role {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 40px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* User Name */
+.user-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: white;
+  letter-spacing: 0.3px;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Logout Button */
+.logout-btn {
+  background: rgba(231, 76, 60, 0.9);
+  border: none;
+  padding: 5px 14px;
+  border-radius: 40px;
+  color: white;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  margin-left: 5px;
+}
+
+.logout-btn:hover {
+  background: #e74c3c;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.4);
+}
+
+/* Dark mode support */
+body.dark .user-info {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark .user-info:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .user-info::after {
+    display: none;
+  }
+  
+  .user-name {
+    max-width: 100px;
+    font-size: 0.8rem;
+  }
+  
+  .user-role {
+    padding: 3px 8px;
+    font-size: 0.65rem;
+  }
+  
+  .logout-btn {
+    padding: 4px 10px;
+    font-size: 0.65rem;
+  }
+}

@@ -134,7 +134,7 @@ const escapeHtml = (text) => {
   return div.innerHTML;
 };
 
-function Map({ issues, onMapClick, language, t }) {
+function Map({ issues, onMapClick, language, t, isAdmin }) {
   const mapRef = useRef(null);
   const markerClusterRef = useRef(null);
   const selectedMarkerRef = useRef(null);
@@ -312,8 +312,20 @@ function Map({ issues, onMapClick, language, t }) {
         // Set bounds for Sri Lanka
         mapRef.current.setMaxBounds(L.latLngBounds([5.8, 79.4], [9.9, 82.0]));
         
-        // Handle map click
+        // Handle map click - WITH ADMIN CHECK
         mapRef.current.on('click', async (e) => {
+          // Only allow pinning if user is admin
+          if (!isAdmin) {
+            const toastEvent = new CustomEvent('showToast', {
+              detail: {
+                message: t?.('onlyAdminCanReport') || '⚠️ Only administrators can report environmental issues',
+                type: 'warning'
+              }
+            });
+            window.dispatchEvent(toastEvent);
+            return;
+          }
+          
           const { lat, lng } = e.latlng;
           
           if (selectedMarkerRef.current) {
@@ -374,7 +386,7 @@ function Map({ issues, onMapClick, language, t }) {
       clearTimeout(timer);
       // Don't cleanup here to prevent map destruction on theme change
     };
-  }, [stableOnMapClick]); // Add stableOnMapClick as dependency
+}, [stableOnMapClick, isAdmin, t]); // Add isAdmin as dependency
 
   // Update markers when issues change
   useEffect(() => {
@@ -772,8 +784,22 @@ function Map({ issues, onMapClick, language, t }) {
   );
 }
 
-// Add global function for report button
+// Add global function for report button with admin check
 window.reportIssueHere = () => {
+  // Check if user is admin by looking for admin badge or using auth
+  const isUserAdmin = document.querySelector('.user-role')?.innerText.includes('Admin');
+  
+  if (!isUserAdmin) {
+    const toastEvent = new CustomEvent('showToast', {
+      detail: {
+        message: '⚠️ Only administrators can report environmental issues',
+        type: 'warning'
+      }
+    });
+    window.dispatchEvent(toastEvent);
+    return;
+  }
+  
   const reportTab = document.querySelector('.nav-tabs button:nth-child(2)');
   if (reportTab) {
     reportTab.click();

@@ -6,7 +6,7 @@ import notificationService from '../services/notificationService';
 
 const API_URL = 'http://localhost:5001';
 
-function ResearchPanel({ language, t }) {
+function ResearchPanel({ language, t, isAdmin }) {
   const [showForm, setShowForm] = useState(false);
   const [selectedResearch, setSelectedResearch] = useState(null);
   const [allResearch, setAllResearch] = useState([]);
@@ -53,22 +53,23 @@ function ResearchPanel({ language, t }) {
 
   const provinces = ['Western', 'Central', 'Southern', 'Northern', 'Eastern', 'North Western', 'North Central', 'Uva', 'Sabaragamuwa'];
 
-  // Navigate to issue panel and highlight specific issue
   const navigateToIssue = (issueId, issueTitle) => {
-    // Navigate to issues panel
-    const issuesTabButton = document.querySelector('.nav-tabs button:nth-child(3)');
+    // Store the issue ID BEFORE navigating
+    sessionStorage.setItem('highlightIssueId', issueId);
+    sessionStorage.setItem('scrollToIssueId', issueId);
+    sessionStorage.setItem('forceHighlight', 'true');
+    sessionStorage.setItem('targetTitle', issueTitle);
+    
+    // Navigate to issues panel (3rd button)
+    const issuesTabButton = document.querySelector('.nav-tabs button:nth-child(2)');
     if (issuesTabButton) {
       issuesTabButton.click();
     }
     
-    // Store the issue ID to highlight
-    sessionStorage.setItem('highlightIssueId', issueId);
-    sessionStorage.setItem('scrollToIssueId', issueId);
-    
-    // Show toast notification
+    // Show toast
     const toastEvent = new CustomEvent('showToast', {
       detail: {
-        message: `📍 Navigating to: ${issueTitle.substring(0, 50)}`,
+        message: `📍 Opening: ${issueTitle.substring(0, 50)}...`,
         type: 'info'
       }
     });
@@ -80,19 +81,21 @@ function ResearchPanel({ language, t }) {
     loadIssues();
   }, []);
 
-  // Handle highlighting from sessionStorage when component mounts or research changes
+  // SINGLE HIGHLIGHTING USEEFFECT FOR RESEARCH - FIXED
+  // IMMEDIATE HIGHLIGHTING FOR RESEARCH - Runs as soon as research is loaded
   useEffect(() => {
-    // Check if there's a research to highlight
     const highlightResearchId = sessionStorage.getItem('highlightResearchId');
     const scrollToResearchId = sessionStorage.getItem('scrollToResearchId');
+    const forceHighlight = sessionStorage.getItem('forceHighlight');
     
     if (highlightResearchId && allResearch.length > 0) {
-      // Clear the stored IDs immediately to prevent re-highlighting
+      // Clear storage immediately
       sessionStorage.removeItem('highlightResearchId');
       sessionStorage.removeItem('scrollToResearchId');
+      sessionStorage.removeItem('forceHighlight');
       
-      // Function to find and highlight the research card
-      const findAndHighlightResearch = () => {
+      // Use requestAnimationFrame for immediate DOM access
+      requestAnimationFrame(() => {
         const targetElement = document.getElementById(`research-${highlightResearchId}`);
         
         if (targetElement) {
@@ -104,60 +107,102 @@ function ResearchPanel({ language, t }) {
           // Add highlight class
           targetElement.classList.add('highlighted');
           
-          // Scroll to the element
-          targetElement.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center'
-          });
+          // Scroll to element immediately
+          if (scrollToResearchId || forceHighlight) {
+            targetElement.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center'
+            });
+          }
           
-          // Flash effect for better visibility
+          // Flash effect
           let flashCount = 0;
           const originalTransform = targetElement.style.transform;
+          
           const flashInterval = setInterval(() => {
             if (flashCount >= 3) {
               clearInterval(flashInterval);
-              // Remove highlight after 3 seconds
               setTimeout(() => {
                 targetElement.classList.remove('highlighted');
                 targetElement.style.transform = originalTransform;
-              }, 3000);
+              }, 2000);
             } else {
               targetElement.style.transform = 'scale(1.02)';
               setTimeout(() => {
                 if (targetElement) {
                   targetElement.style.transform = originalTransform;
                 }
-              }, 200);
+              }, 150);
               flashCount++;
             }
-          }, 400);
+          }, 300);
           
-          // Show success notification
+          // Show success toast
+          const targetTitle = sessionStorage.getItem('targetTitle') || 'Research';
           const toastEvent = new CustomEvent('showToast', {
             detail: {
-              message: `✓ Found: ${targetElement.querySelector('h3')?.textContent || 'Research'}`,
+              message: `✅ Found: ${targetTitle.substring(0, 50)}`,
               type: 'success'
             }
           });
           window.dispatchEvent(toastEvent);
-          
-          return true;
+          sessionStorage.removeItem('targetTitle');
         }
-        return false;
-      };
-      
-      // Try immediately
-      if (!findAndHighlightResearch()) {
-        // If not found, try after delays (for when research is still loading)
-        const delays = [300, 500, 1000, 1500];
-        delays.forEach(delay => {
-          setTimeout(() => {
-            findAndHighlightResearch();
-          }, delay);
-        });
-      }
+      });
     }
-  }, [allResearch]); // Run when research changes
+  }, [allResearch]); // Runs immediately when research changes
+
+  // SECOND HIGHLIGHTING USEEFFECT FOR RESEARCH - ADDED FOR NAVIGATION
+  useEffect(() => {
+    const highlightResearchId = sessionStorage.getItem('highlightResearchId');
+    const scrollToResearchId = sessionStorage.getItem('scrollToResearchId');
+    const forceHighlight = sessionStorage.getItem('forceHighlight');
+    
+    if (highlightResearchId && allResearch.length > 0) {
+      sessionStorage.removeItem('highlightResearchId');
+      sessionStorage.removeItem('scrollToResearchId');
+      sessionStorage.removeItem('forceHighlight');
+      
+      setTimeout(() => {
+        const targetElement = document.getElementById(`research-${highlightResearchId}`);
+        
+        if (targetElement) {
+          document.querySelectorAll('.research-card.highlighted').forEach(card => {
+            card.classList.remove('highlighted');
+          });
+          
+          targetElement.classList.add('highlighted');
+          
+          if (scrollToResearchId || forceHighlight) {
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          
+          let flashCount = 0;
+          const flashInterval = setInterval(() => {
+            if (flashCount >= 3) {
+              clearInterval(flashInterval);
+              setTimeout(() => {
+                targetElement.classList.remove('highlighted');
+              }, 2000);
+            } else {
+              targetElement.style.transform = 'scale(1.02)';
+              setTimeout(() => {
+                if (targetElement) targetElement.style.transform = '';
+              }, 150);
+              flashCount++;
+            }
+          }, 300);
+          
+          const targetTitle = sessionStorage.getItem('targetTitle') || 'Research';
+          const toastEvent = new CustomEvent('showToast', {
+            detail: { message: `✅ Found: ${targetTitle}`, type: 'success' }
+          });
+          window.dispatchEvent(toastEvent);
+          sessionStorage.removeItem('targetTitle');
+        }
+      }, 300);
+    }
+  }, [allResearch]);
 
   const loadResearch = async () => {
     try {
@@ -318,6 +363,11 @@ function ResearchPanel({ language, t }) {
   const addResearch = async (e) => {
     e.preventDefault();
     
+    if (!isAdmin) {
+      notificationService.error('Only admins can add research', 'Permission Denied');
+      return;
+    }
+    
     if (!formData.title || !formData.district) {
       alert(t('fillRequiredFields') || 'Please enter title and district!');
       return;
@@ -378,6 +428,11 @@ function ResearchPanel({ language, t }) {
   };
 
   const editResearchHandler = async (id, updatedData) => {
+    if (!isAdmin) {
+      notificationService.error('Only admins can edit research', 'Permission Denied');
+      return false;
+    }
+    
     try {
       const response = await axios.put(`${API_URL}/api/research/${id}`, updatedData);
       if (response.status === 200) {
@@ -395,6 +450,12 @@ function ResearchPanel({ language, t }) {
 
   const deleteResearch = async (id, e) => {
     e.stopPropagation();
+    
+    if (!isAdmin) {
+      notificationService.error('Only admins can delete research', 'Permission Denied');
+      return;
+    }
+    
     if (window.confirm(t('deleteConfirm') || 'Are you sure you want to delete this research?')) {
       try {
         await axios.delete(`${API_URL}/api/research/${id}`);
@@ -414,6 +475,11 @@ function ResearchPanel({ language, t }) {
   };
 
   const connectToIssue = async (researchId) => {
+    if (!isAdmin) {
+      notificationService.error('Only admins can connect research to issues', 'Permission Denied');
+      return;
+    }
+    
     if (!selectedIssueId) {
       alert(t('selectIssueFirst') || 'Please select an issue to connect');
       return;
@@ -491,7 +557,6 @@ function ResearchPanel({ language, t }) {
     return link.substring(0, maxLength) + '...';
   };
 
-  // Helper function to truncate text
   const truncateText = (text, maxLength = 50) => {
     if (!text) return '';
     if (text.length <= maxLength) return text;
@@ -548,12 +613,14 @@ function ResearchPanel({ language, t }) {
           <h1>🔬 {t('researchHub')}</h1>
           <p>{t('researchDescription') || 'Scientific studies and community research for a sustainable Sri Lanka'}</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="add-research-btn">
-          <i className="fas fa-plus-circle"></i> {showForm ? t('cancel') : t('addNewResearch')}
-        </button>
+        {isAdmin && (
+          <button onClick={() => setShowForm(!showForm)} className="add-research-btn">
+            <i className="fas fa-plus-circle"></i> {showForm ? t('cancel') : t('addNewResearch')}
+          </button>
+        )}
       </div>
 
-      {showForm && (
+      {isAdmin && showForm && (
         <div className="research-form-overlay">
           <div className="research-form">
             <div className="form-header">
@@ -750,9 +817,13 @@ function ResearchPanel({ language, t }) {
               
               <div className="research-card-footer">
                 <button onClick={() => openDetails(item)} className="view-details-btn">📖 {t('viewDetails')}</button>
-                <button onClick={() => setEditingResearch(item)} className="edit-research-btn">✏️ {t('edit') || 'Edit'}</button>
-                <button onClick={() => setShowConnectModal(item)} className="connect-issue-btn">🔗 {t('connectToIssue')}</button>
-                <button onClick={(e) => deleteResearch(item._id, e)} className="delete-research-btn">🗑️ {t('delete')}</button>
+                {isAdmin && (
+                  <>
+                    <button onClick={() => setEditingResearch(item)} className="edit-research-btn">✏️ {t('edit') || 'Edit'}</button>
+                    <button onClick={() => setShowConnectModal(item)} className="connect-issue-btn">🔗 {t('connectToIssue')}</button>
+                    <button onClick={(e) => deleteResearch(item._id, e)} className="delete-research-btn">🗑️ {t('delete')}</button>
+                  </>
+                )}
               </div>
             </div>
           ))}
@@ -760,7 +831,7 @@ function ResearchPanel({ language, t }) {
       )}
 
       {/* Connect to Issue Modal */}
-      {showConnectModal && (
+      {isAdmin && showConnectModal && (
         <div className="modal-overlay" onClick={() => setShowConnectModal(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
@@ -885,7 +956,6 @@ function ResearchPanel({ language, t }) {
               </div>
             )}
             
-            {/* Connected Issues in Modal */}
             {selectedResearch.connectedIssues && selectedResearch.connectedIssues.length > 0 && (
               <div className="modal-section">
                 <h3><i className="fas fa-link"></i> 🔗 {t('connectedIssues') || 'Connected Issues'} ({selectedResearch.connectedIssues.length})</h3>
@@ -915,7 +985,7 @@ function ResearchPanel({ language, t }) {
       )}
 
       {/* Edit Research Modal */}
-      {editingResearch && (
+      {isAdmin && editingResearch && (
         <EditResearchModal
           research={editingResearch}
           onClose={() => setEditingResearch(null)}

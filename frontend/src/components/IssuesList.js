@@ -3,10 +3,10 @@ import axios from 'axios';
 import './IssuesList.css';
 import EditIssueModal from './EditIssueModal';
 
-function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssue, onRefreshIssues, language, t }) {
-  const [filter, setFilter] = useState('all'); // Status filter: all, pending, resolved
-  const [categoryFilter, setCategoryFilter] = useState('all'); // Category filter
-  const [searchTerm, setSearchTerm] = useState(''); // Search term
+function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssue, onRefreshIssues, language, t, isAdmin }) {
+  const [filter, setFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [showResolveModal, setShowResolveModal] = useState(null);
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [showConnectModal, setShowConnectModal] = useState(null);
@@ -24,7 +24,6 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
   const [currentDocs, setCurrentDocs] = useState([]);
   const [issueTitle, setIssueTitle] = useState('');
 
-  // Get unique categories from issues
   const getUniqueCategories = () => {
     const categories = new Set();
     issues.forEach(issue => {
@@ -35,7 +34,6 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
     return Array.from(categories).sort();
   };
 
-  // Category icons mapping
   const getCategoryIcon = (category) => {
     const icons = {
       'Waste & Pollution': '🗑️',
@@ -53,134 +51,132 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
     return icons[category];
   };
 
-  // Navigate to research panel and highlight specific research
+  // Navigate to Research Panel and highlight specific research
   const navigateToResearch = (researchId, researchTitle) => {
-    // Navigate to research panel (4th button - index 3)
-    const researchTabButton = document.querySelector('.nav-tabs button:nth-child(4)');
+    sessionStorage.setItem('highlightResearchId', researchId);
+    sessionStorage.setItem('scrollToResearchId', researchId);
+    sessionStorage.setItem('forceHighlight', 'true');
+    sessionStorage.setItem('targetTitle', researchTitle);
+    
+    const researchTabButton = document.querySelector('.nav-tabs button:nth-child(3)');
     if (researchTabButton) {
       researchTabButton.click();
     }
     
-    // Store the research ID to highlight
-    sessionStorage.setItem('highlightResearchId', researchId);
-    sessionStorage.setItem('scrollToResearchId', researchId);
-    
-    // Also store a timestamp to ensure it's a fresh navigation
-    sessionStorage.setItem('researchNavTimestamp', Date.now().toString());
-    
-    // Show toast notification
     const toastEvent = new CustomEvent('showToast', {
-      detail: {
-        message: `🔬 Navigating to: ${researchTitle.substring(0, 50)}`,
-        type: 'info'
-      }
+      detail: { message: `🔬 Opening: ${researchTitle.substring(0, 50)}...`, type: 'info' }
     });
     window.dispatchEvent(toastEvent);
     
-    // Force a small delay to ensure the research panel is loaded
-    setTimeout(() => {
-      // Try to find and scroll to the research card even if the highlight effect didn't trigger
+    let attempts = 0;
+    const maxAttempts = 30;
+    
+    const findAndHighlight = setInterval(() => {
+      attempts++;
       const targetElement = document.getElementById(`research-${researchId}`);
+      
       if (targetElement) {
-        targetElement.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center'
+        clearInterval(findAndHighlight);
+        
+        document.querySelectorAll('.research-card.highlighted').forEach(card => {
+          card.classList.remove('highlighted');
         });
+        
         targetElement.classList.add('highlighted');
-        setTimeout(() => {
-          targetElement.classList.remove('highlighted');
-        }, 3000);
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        let flashCount = 0;
+        const flashInterval = setInterval(() => {
+          if (flashCount >= 3) {
+            clearInterval(flashInterval);
+            setTimeout(() => {
+              targetElement.classList.remove('highlighted');
+            }, 2000);
+          } else {
+            targetElement.style.transform = 'scale(1.02)';
+            setTimeout(() => {
+              if (targetElement) targetElement.style.transform = '';
+            }, 150);
+            flashCount++;
+          }
+        }, 300);
+        
+        const successEvent = new CustomEvent('showToast', {
+          detail: { message: `✅ Found: ${researchTitle}`, type: 'success' }
+        });
+        window.dispatchEvent(successEvent);
+        
+        sessionStorage.removeItem('highlightResearchId');
+        sessionStorage.removeItem('scrollToResearchId');
+        sessionStorage.removeItem('forceHighlight');
+        sessionStorage.removeItem('targetTitle');
+      } else if (attempts >= maxAttempts) {
+        clearInterval(findAndHighlight);
       }
-    }, 800);
+    }, 200);
   };
+
+  // Add this useEffect for highlighting from navigation
+  useEffect(() => {
+    const highlightIssueId = sessionStorage.getItem('highlightIssueId');
+    const scrollToIssueId = sessionStorage.getItem('scrollToIssueId');
+    const forceHighlight = sessionStorage.getItem('forceHighlight');
+    
+    if (highlightIssueId && issues.length > 0) {
+      sessionStorage.removeItem('highlightIssueId');
+      sessionStorage.removeItem('scrollToIssueId');
+      sessionStorage.removeItem('forceHighlight');
+      
+      setTimeout(() => {
+        const targetElement = document.getElementById(`issue-${highlightIssueId}`);
+        
+        if (targetElement) {
+          document.querySelectorAll('.issue-card.highlighted').forEach(card => {
+            card.classList.remove('highlighted');
+          });
+          
+          targetElement.classList.add('highlighted');
+          
+          if (scrollToIssueId || forceHighlight) {
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          
+          let flashCount = 0;
+          const flashInterval = setInterval(() => {
+            if (flashCount >= 3) {
+              clearInterval(flashInterval);
+              setTimeout(() => {
+                targetElement.classList.remove('highlighted');
+              }, 2000);
+            } else {
+              targetElement.style.transform = 'scale(1.02)';
+              setTimeout(() => {
+                if (targetElement) targetElement.style.transform = '';
+              }, 150);
+              flashCount++;
+            }
+          }, 300);
+          
+          const targetTitle = sessionStorage.getItem('targetTitle') || 'Issue';
+          const toastEvent = new CustomEvent('showToast', {
+            detail: { message: `✅ Found: ${targetTitle}`, type: 'success' }
+          });
+          window.dispatchEvent(toastEvent);
+          sessionStorage.removeItem('targetTitle');
+        }
+      }, 300);
+    }
+  }, [issues]);
 
   useEffect(() => {
     console.log('📋 Issues updated in IssuesList:', issues.length);
   }, [issues]);
 
   useEffect(() => {
-    loadResearch();
-  }, []);
-
-  // Handle highlighting from sessionStorage when component mounts or issues change
-  useEffect(() => {
-    // Check if there's an issue to highlight from sessionStorage
-    const highlightIssueId = sessionStorage.getItem('highlightIssueId');
-    const scrollToIssueId = sessionStorage.getItem('scrollToIssueId');
-    
-    if (highlightIssueId) {
-      // Clear the stored IDs after using them
-      sessionStorage.removeItem('highlightIssueId');
-      
-      // Find the element
-      const targetElement = document.getElementById(`issue-${highlightIssueId}`);
-      
-      if (targetElement) {
-        // Remove any existing highlights
-        document.querySelectorAll('.issue-card.highlighted').forEach(card => {
-          card.classList.remove('highlighted');
-        });
-        
-        // Add highlight class
-        targetElement.classList.add('highlighted');
-        
-        // Scroll to the element if needed
-        if (scrollToIssueId) {
-          sessionStorage.removeItem('scrollToIssueId');
-          targetElement.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center'
-          });
-        }
-        
-        // Flash effect for better visibility
-        let flashCount = 0;
-        const flashInterval = setInterval(() => {
-          if (flashCount >= 3) {
-            clearInterval(flashInterval);
-            // Remove highlight after 3 seconds
-            setTimeout(() => {
-              targetElement.classList.remove('highlighted');
-            }, 3000);
-          } else {
-            targetElement.style.transform = 'scale(1.02)';
-            setTimeout(() => {
-              if (targetElement) {
-                targetElement.style.transform = '';
-              }
-            }, 200);
-            flashCount++;
-          }
-        }, 400);
-        
-        // Show success notification
-        const toastEvent = new CustomEvent('showToast', {
-          detail: {
-            message: `✓ Found: ${targetElement.querySelector('h3')?.textContent || 'Issue'}`,
-            type: 'success'
-          }
-        });
-        window.dispatchEvent(toastEvent);
-      } else {
-        // If element not found immediately, try again after a delay
-        setTimeout(() => {
-          const retryElement = document.getElementById(`issue-${highlightIssueId}`);
-          if (retryElement) {
-            retryElement.classList.add('highlighted');
-            retryElement.scrollIntoView({ 
-              behavior: 'smooth', 
-              block: 'center'
-            });
-            
-            // Remove highlight after 3 seconds
-            setTimeout(() => {
-              retryElement.classList.remove('highlighted');
-            }, 3000);
-          }
-        }, 1000);
-      }
+    if (isAdmin) {
+      loadResearch();
     }
-  }, [issues]); // Run when issues change
+  }, [isAdmin]);
 
   const loadResearch = async () => {
     try {
@@ -191,26 +187,29 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
     }
   };
 
-  // Filter issues based on status, category, and search term
   const filteredIssues = issues.filter(issue => {
-    // Status filter
     if (filter !== 'all' && issue.status !== filter) return false;
-    
-    // Category filter
     if (categoryFilter !== 'all' && issue.category !== categoryFilter) return false;
-    
-    // Search filter (title, description, district)
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       return (issue.title && issue.title.toLowerCase().includes(search)) ||
              (issue.description && issue.description.toLowerCase().includes(search)) ||
              (issue.district && issue.district.toLowerCase().includes(search));
     }
-    
     return true;
   });
 
   const openFullEditModal = (issue) => {
+    if (!isAdmin) {
+      const toastEvent = new CustomEvent('showToast', {
+        detail: {
+          message: '⚠️ Only administrators can edit issues',
+          type: 'warning'
+        }
+      });
+      window.dispatchEvent(toastEvent);
+      return;
+    }
     console.log('Opening edit modal for issue:', issue._id);
     setShowFullEditModal(issue);
   };
@@ -225,6 +224,7 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
   };
 
   const handleIssueUpdate = async (id, formData) => {
+    if (!isAdmin) return false;
     console.log('📝 handleIssueUpdate called with id:', id);
     const result = await onEditIssue(id, formData);
     
@@ -239,6 +239,17 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
   };
 
   const handleConnectResearch = async (issueId, researchId) => {
+    if (!isAdmin) {
+      const toastEvent = new CustomEvent('showToast', {
+        detail: {
+          message: '⚠️ Only administrators can connect research',
+          type: 'warning'
+        }
+      });
+      window.dispatchEvent(toastEvent);
+      return false;
+    }
+    
     if (!researchId) {
       alert(t('selectResearchFirst') || 'Please select a research paper to connect');
       return false;
@@ -295,6 +306,17 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
   };
 
   const goToResearchPanel = () => {
+    if (!isAdmin) {
+      const toastEvent = new CustomEvent('showToast', {
+        detail: {
+          message: '⚠️ Only administrators can create new research',
+          type: 'warning'
+        }
+      });
+      window.dispatchEvent(toastEvent);
+      return;
+    }
+    
     const researchTabButton = document.querySelector('.nav-tabs button:nth-child(4)');
     if (researchTabButton) {
       researchTabButton.click();
@@ -344,7 +366,6 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
     setCurrentImageIndex((prev) => (prev - 1 + currentImages.length) % currentImages.length);
   };
 
-  // Clear all filters
   const clearAllFilters = () => {
     setFilter('all');
     setCategoryFilter('all');
@@ -393,7 +414,6 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
         </div>
       </div>
 
-      {/* Search and Filter Bar */}
       <div className="search-filter-bar">
         <div className="search-input-wrapper">
           <span className="search-icon">🔍</span>
@@ -432,7 +452,6 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
         )}
       </div>
 
-      {/* Results count */}
       <div className="filter-results-info">
         <span>
           {t('showing') || 'Showing'} {filteredIssues.length} {t('of') || 'of'} {issues.length} {t('issues') || 'issues'}
@@ -525,28 +544,54 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
                 )}
               </div>
               
+              {/* Action Buttons with Permission Checks */}
               <div className="issue-actions">
-                {issue.status !== 'resolved' && (
+                {isAdmin && issue.status !== 'resolved' && (
                   <button className="resolve-btn" onClick={() => setShowResolveModal(issue)}>
                     ✓ {t('resolve')}
                   </button>
                 )}
-                <button className="connect-research-btn" onClick={() => setShowConnectModal(issue)}>
-                  🔗 {t('connectResearch')}
-                </button>
-                <button className="edit-btn" onClick={() => openFullEditModal(issue)}>
-                  ✏️ {t('edit')}
-                </button>
-                <button className="delete-btn" onClick={() => onDelete(issue._id)}>
-                  🗑️ {t('delete')}
-                </button>
+                
+                {/* Connect Research button - NOW HIDDEN FOR NON-ADMINS */}
+                {isAdmin && (
+                  <button 
+                    className="connect-research-btn" 
+                    onClick={() => {
+                      if (!isAdmin) {
+                        const toastEvent = new CustomEvent('showToast', {
+                          detail: {
+                            message: '⚠️ Only administrators can connect research to issues',
+                            type: 'warning'
+                          }
+                        });
+                        window.dispatchEvent(toastEvent);
+                        return;
+                      }
+                      setShowConnectModal(issue);
+                    }}
+                  >
+                    🔗 {t('connectResearch')}
+                  </button>
+                )}
+                
+                {isAdmin && (
+                  <button className="edit-btn" onClick={() => openFullEditModal(issue)}>
+                    ✏️ {t('edit')}
+                  </button>
+                )}
+                
+                {isAdmin && (
+                  <button className="delete-btn" onClick={() => onDelete(issue._id)}>
+                    🗑️ {t('delete')}
+                  </button>
+                )}
               </div>
             </div>
           ))
         )}
       </div>
 
-      {/* Photo Viewer */}
+      {/* Photo Viewer, Map Viewer, Document Viewer Modals - Keep as is */}
       {showImageViewer && (
         <div className="viewer-modal" onClick={() => setShowImageViewer(false)}>
           <div className="viewer-container" onClick={(e) => e.stopPropagation()}>
@@ -583,7 +628,6 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
         </div>
       )}
 
-      {/* Map Viewer */}
       {showMapViewer && (
         <div className="viewer-modal" onClick={() => setShowMapViewer(false)}>
           <div className="viewer-container" onClick={(e) => e.stopPropagation()}>
@@ -616,7 +660,6 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
         </div>
       )}
 
-      {/* Document Viewer */}
       {showDocViewer && (
         <div className="viewer-modal" onClick={() => setShowDocViewer(false)}>
           <div className="viewer-container document-viewer" onClick={(e) => e.stopPropagation()}>
@@ -640,8 +683,8 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
         </div>
       )}
 
-      {/* Resolve Modal */}
-      {showResolveModal && (
+      {/* Resolve Modal - Only for admins */}
+      {isAdmin && showResolveModal && (
         <div className="modal-overlay" onClick={() => setShowResolveModal(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>✓ {t('resolveIssue') || 'Resolve Issue'}</h3>
@@ -668,8 +711,8 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
         </div>
       )}
 
-      {/* Connect Research Modal */}
-      {showConnectModal && (
+      {/* Connect Research Modal - Only for admins */}
+      {isAdmin && showConnectModal && (
         <div className="modal-overlay" onClick={() => setShowConnectModal(null)}>
           <div className="modal-content connect-research-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header-custom">
@@ -735,7 +778,7 @@ function IssuesList({ issues, onDelete, onResolve, onConnectResearch, onEditIssu
       )}
 
       {/* Full Edit Modal */}
-      {showFullEditModal && (
+      {isAdmin && showFullEditModal && (
         <EditIssueModal
           issue={showFullEditModal}
           onClose={() => {

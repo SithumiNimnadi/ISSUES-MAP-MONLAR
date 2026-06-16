@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import './IssueDetailModal.css';
 
 const IssueDetailModal = ({ issue, onClose }) => {
-  // Always call hooks at the top level, never conditionally
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
@@ -13,122 +12,157 @@ const IssueDetailModal = ({ issue, onClose }) => {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [onClose]);
 
-  // Function to navigate to issues list and highlight specific issue
   const goToIssuesList = () => {
-    // Find and click the Issues tab button (3rd button in nav-tabs)
-    const issuesTabButton = document.querySelector('.nav-tabs button:nth-child(3)');
-    if (issuesTabButton) {
-      issuesTabButton.click();
-    }
-    
-    // Close the modal
+    // Close modal first
     onClose();
     
-    // Store the issue ID to highlight and scroll to it
+    // Store the issue ID for highlighting BEFORE navigating
     sessionStorage.setItem('highlightIssueId', issue._id);
     sessionStorage.setItem('scrollToIssueId', issue._id);
+    sessionStorage.setItem('forceHighlight', 'true');
+    sessionStorage.setItem('targetTitle', issue.title);
     
-    // Show a toast notification
+    // Show toast
     const toastEvent = new CustomEvent('showToast', {
       detail: {
-        message: `📍 Navigating to: ${issue.title}`,
+        message: `📍 Opening: ${issue.title.substring(0, 50)}...`,
         type: 'info'
       }
     });
     window.dispatchEvent(toastEvent);
     
-    // Use a small delay to ensure the issues list is rendered
+    // 🔥 Wait for modal to close and DOM to update
     setTimeout(() => {
-      highlightAndScrollToIssue(issue._id);
-    }, 500);
-  };
-  
-  // Function to highlight and scroll to the specific issue
-  const highlightAndScrollToIssue = (issueId) => {
-    // Try to find the issue card
-    let targetElement = document.getElementById(`issue-${issueId}`);
-    
-    // If not found, try with different selector patterns
-    if (!targetElement) {
-      targetElement = document.querySelector(`[data-issue-id="${issueId}"]`);
-    }
-    
-    if (!targetElement) {
-      targetElement = document.querySelector(`.issue-card[data-id="${issueId}"]`);
-    }
-    
-    if (targetElement) {
-      // Remove any existing highlights
-      document.querySelectorAll('.issue-card.highlighted').forEach(card => {
-        card.classList.remove('highlighted');
-      });
-      
-      // Add highlight class
-      targetElement.classList.add('highlighted');
-      
-      // Scroll to the element with smooth behavior
-      targetElement.scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'center',
-        inline: 'nearest'
-      });
-      
-      // Flash effect for better visibility
-      let flashCount = 0;
-      const flashInterval = setInterval(() => {
-        if (flashCount >= 3) {
-          clearInterval(flashInterval);
-          // Remove highlight after flashing
-          setTimeout(() => {
-            targetElement.classList.remove('highlighted');
-          }, 2000);
+      try {
+        const userRole = localStorage.getItem('userRole') || 'guest';
+        console.log("Current user role:", userRole);
+
+        let issuesTabButton = null;
+
+        // Role එක අනුව tab එක select කරන්න
+        if (userRole === "admin") {
+          // Admin - 3rd tab (index 3)
+          issuesTabButton = document.querySelector('.nav-tabs button:nth-child(3)');
+          console.log("👑 Admin mode: Selecting 3rd tab");
         } else {
-          targetElement.style.transform = 'scale(1.02)';
+          // User or Guest - 2nd tab (index 2)
+          issuesTabButton = document.querySelector('.nav-tabs button:nth-child(2)');
+          console.log("👤 User/Guest mode: Selecting 2nd tab");
+        }
+        
+        // Click the tab if found
+        if (issuesTabButton) {
+          issuesTabButton.click();
+          console.log("✅ Tab clicked successfully");
+          
+          // 🔥 Start highlighting after tab switch
           setTimeout(() => {
-            if (targetElement) {
-              targetElement.style.transform = '';
-            }
-          }, 200);
-          flashCount++;
-        }
-      }, 400);
-      
-      // Show success notification
-      const toastEvent = new CustomEvent('showToast', {
-        detail: {
-          message: `✓ Found: ${issue.title}`,
-          type: 'success'
-        }
-      });
-      window.dispatchEvent(toastEvent);
-    } else {
-      // If element not found immediately, try again after a delay
-      setTimeout(() => {
-        const retryElement = document.getElementById(`issue-${issueId}`);
-        if (retryElement) {
-          retryElement.classList.add('highlighted');
-          retryElement.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center'
-          });
+            findAndHighlightIssue();
+          }, 500);
         } else {
-          // Show error if still not found
-          const toastEvent = new CustomEvent('showToast', {
-            detail: {
-              message: `⚠️ Could not locate the specific issue, but you're in the issues list`,
-              type: 'warning'
-            }
-          });
-          window.dispatchEvent(toastEvent);
+          console.warn("⚠️ Tab element not found");
+          // Fallback: Try to find by text content
+          const fallbackTab = Array.from(document.querySelectorAll('.nav-tabs button'))
+            .find(btn => btn.textContent.includes('📋') || 
+                           btn.textContent.toLowerCase().includes('issues'));
+          if (fallbackTab) {
+            fallbackTab.click();
+            console.log("✅ Fallback tab clicked");
+            setTimeout(() => {
+              findAndHighlightIssue();
+            }, 500);
+          } else {
+            console.error("❌ No tab found!");
+          }
         }
-      }, 1000);
-    }
+      } catch (error) {
+        console.error("❌ Error in tab navigation:", error);
+      }
+    }, 300);
   };
 
-  // Return null if no issue (after all hooks)
-  if (!issue) {
-    return null;
-  }
+  // 🔥 Separate function for finding and highlighting
+  const findAndHighlightIssue = () => {
+    console.log("🔍 Searching for issue:", issue._id);
+    let attempts = 0;
+    const maxAttempts = 40;
+    
+    const findAndHighlight = setInterval(() => {
+      attempts++;
+      const targetElement = document.getElementById(`issue-${issue._id}`);
+      
+      if (targetElement) {
+        clearInterval(findAndHighlight);
+        console.log("✅ Issue found!", targetElement);
+        
+        // Remove existing highlights
+        document.querySelectorAll('.issue-card.highlighted').forEach(card => {
+          card.classList.remove('highlighted');
+        });
+        
+        // Add highlight
+        targetElement.classList.add('highlighted');
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Flash animation
+        let flashCount = 0;
+        const flashInterval = setInterval(() => {
+          if (flashCount >= 3) {
+            clearInterval(flashInterval);
+            setTimeout(() => {
+              if (targetElement) {
+                targetElement.classList.remove('highlighted');
+              }
+            }, 2000);
+          } else {
+            targetElement.style.transform = 'scale(1.02)';
+            targetElement.style.transition = 'transform 0.15s ease';
+            setTimeout(() => {
+              if (targetElement) {
+                targetElement.style.transform = 'scale(1)';
+              }
+            }, 150);
+            flashCount++;
+          }
+        }, 300);
+        
+        // Success toast
+        const successEvent = new CustomEvent('showToast', {
+          detail: { 
+            message: `✅ Found: ${issue.title}`, 
+            type: 'success' 
+          }
+        });
+        window.dispatchEvent(successEvent);
+        
+        // Clean up session storage
+        sessionStorage.removeItem('highlightIssueId');
+        sessionStorage.removeItem('scrollToIssueId');
+        sessionStorage.removeItem('forceHighlight');
+        sessionStorage.removeItem('targetTitle');
+        
+      } else if (attempts >= maxAttempts) {
+        clearInterval(findAndHighlight);
+        console.warn("⚠️ Issue element not found after", maxAttempts, "attempts");
+        
+        // Try to find by different selector
+        const altElement = document.querySelector(`[data-issue-id="${issue._id}"]`) ||
+                          document.querySelector(`.issue-item[data-id="${issue._id}"]`);
+        if (altElement) {
+          console.log("✅ Found using alternative selector!");
+          altElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          altElement.style.border = '3px solid #2d6a4f';
+          altElement.style.boxShadow = '0 0 20px rgba(45, 106, 79, 0.5)';
+          setTimeout(() => {
+            altElement.style.border = '';
+            altElement.style.boxShadow = '';
+          }, 3000);
+        }
+      }
+    }, 300);
+  };
+
+  if (!issue) return null;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -140,9 +174,7 @@ const IssueDetailModal = ({ issue, onClose }) => {
         <div className="modal-body">
           <div className="detail-section">
             <label>Category:</label>
-            <span className="category-badge">
-              {issue.category}
-            </span>
+            <span className="category-badge">{issue.category}</span>
           </div>
           
           <div className="detail-section">

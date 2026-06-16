@@ -1,24 +1,32 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Map from './components/Map';
-import ReportForm from './components/ReportForm';
 import IssuesList from './components/IssuesList';
 import ResearchPanel from './components/ResearchPanel';
+import ReportForm from './components/ReportForm';
 import DatabaseViewer from './components/DatabaseViewer';
 import ToastNotification from './components/ToastNotification';
 import NotificationBell from './components/NotificationBell';
+import AuthModal from './components/AuthModal';
+import UserReportForm from './components/UserReportForm';
+import AdminReportsPanel from './components/AdminReportsPanel';
+import UserDashboard from './components/UserDashboard';
+import AdminDashboard from './components/AdminDashboard';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import './components/Map.css';
 import { fetchIssues, createIssue, deleteIssue, testConnection } from './services/api';
 import axios from 'axios';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import notificationService from './services/notificationService';
 import eventBridge from './services/eventBridge';
 import './App.css';
 
-// Main App content that uses language
+
+// Main App content that uses language and auth
 function AppContent() {
   const { language, t, changeLanguage } = useLanguage();
+  const { user, isAdmin, logout, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('map');
   const [issues, setIssues] = useState([]);
   const [selectedLocation, setSelectedLocation] = useState(null);
@@ -28,6 +36,11 @@ function AppContent() {
     const saved = localStorage.getItem('theme');
     return saved === 'dark';
   });
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showUserReportModal, setShowUserReportModal] = useState(false);
+  
+  // State for user reports count
+  const [userReportsCount, setUserReportsCount] = useState(0);
   
   // Toast notification state
   const [toast, setToast] = useState({
@@ -58,7 +71,6 @@ function AppContent() {
         type: event.detail.type || 'info'
       });
       
-      // Auto-hide after 3 seconds
       setTimeout(() => {
         setToast(prev => ({ ...prev, show: false }));
       }, 3000);
@@ -70,7 +82,6 @@ function AppContent() {
 
   // Setup notifications and backend connection
   useEffect(() => {
-    // Request notification permission after 3 seconds (only once)
     const timer = setTimeout(async () => {
       const hasAsked = localStorage.getItem('notificationPermissionAsked');
       if (!hasAsked && "Notification" in window) {
@@ -79,7 +90,6 @@ function AppContent() {
       }
     }, 3000);
     
-    // Setup backend event listener for real-time notifications
     eventBridge.setupSSE();
     
     return () => {
@@ -87,6 +97,18 @@ function AppContent() {
       clearTimeout(timer);
     };
   }, []);
+
+  // Function to load user reports count - wrapped with useCallback
+  const loadUserReportsCount = useCallback(async () => {
+    if (isAdmin()) {
+      try {
+        const response = await axios.get('http://localhost:5001/api/user-reports');
+        setUserReportsCount(response.data.length);
+      } catch (error) {
+        console.error('Error loading reports count:', error);
+      }
+    }
+  }, [isAdmin]);
 
   // Check backend connection
   const checkBackend = async () => {
@@ -107,17 +129,14 @@ function AppContent() {
     try {
       const response = await fetchIssues();
       console.log('✅ Received issues:', response.data.length);
-      console.log('📊 Sample issue:', response.data[0] ? {
-        title: response.data[0].title,
-        images: response.data[0].images?.length,
-        mapImages: response.data[0].mapImages?.length,
-        pdfs: response.data[0].pdfs?.length
-      } : 'No issues');
       setIssues(response.data);
     } catch (error) {
       console.error('Error loading issues:', error);
       if (error.code === 'ECONNREFUSED') {
         setBackendStatus('disconnected');
+      }
+      if (error.response?.status === 401) {
+        setShowAuthModal(true);
       }
     } finally {
       setLoading(false);
@@ -125,19 +144,25 @@ function AppContent() {
   };
 
   useEffect(() => {
-    checkBackend();
-    loadIssues();
-  }, []);
+    if (user) {
+      checkBackend();
+      loadIssues();
+      // Load user reports count for admin
+      if (isAdmin()) {
+        loadUserReportsCount();
+      }
+    } else if (!authLoading) {
+      setLoading(false);
+      setShowAuthModal(true);
+    }
+  }, [user, authLoading, isAdmin, loadUserReportsCount]);
 
   // Handle map click with district detection
   const handleMapClick = (locationData) => {
     setSelectedLocation(locationData);
-    
-    // Show notification using notification service
     const message = t('districtSelected', { district: locationData.district });
     notificationService.notify(message, '📍 Location Selected', 'success');
     
-    // Auto-switch to report tab after a short delay
     setTimeout(() => {
       setActiveTab('report');
     }, 500);
@@ -195,6 +220,11 @@ function AppContent() {
   };
 
   const deleteIssueHandler = async (id) => {
+    if (!isAdmin()) {
+      notificationService.error('Only admins can delete issues', 'Permission Denied');
+      return;
+    }
+    
     if (window.confirm(t('deleteConfirm'))) {
       try {
         const issueToDelete = issues.find(i => i._id === id);
@@ -216,13 +246,17 @@ function AppContent() {
     }
   };
 
-  // Resolve an issue
   const resolveIssueHandler = async (id, resolutionNotes) => {
+    if (!isAdmin()) {
+      notificationService.error('Only admins can resolve issues', 'Permission Denied');
+      return;
+    }
+    
     try {
       const issueToResolve = issues.find(i => i._id === id);
       const response = await axios.put(`http://localhost:5001/api/issues/${id}/resolve`, {
         resolutionNotes: resolutionNotes,
-        resolvedBy: 'Admin'
+        resolvedBy: user?.username || 'Admin'
       });
       
       if (response.status === 200) {
@@ -240,6 +274,11 @@ function AppContent() {
   };
 
   const editIssueHandler = async (id, updatedData) => {
+    if (!isAdmin()) {
+      notificationService.error('Only admins can edit issues', 'Permission Denied');
+      return false;
+    }
+    
     try {
       const response = await axios.put(`http://localhost:5001/api/issues/${id}`, updatedData);
       if (response.status === 200) {
@@ -259,8 +298,12 @@ function AppContent() {
     }
   };
 
-  // Connect research to issue
   const connectResearchToIssue = async (issueId, researchId) => {
+    if (!isAdmin()) {
+      notificationService.error('Only admins can connect research to issues', 'Permission Denied');
+      return;
+    }
+    
     try {
       await axios.post(`http://localhost:5001/api/research/${researchId}/connect-issue/${issueId}`);
       await axios.post(`http://localhost:5001/api/issues/${issueId}/connect-research/${researchId}`);
@@ -277,10 +320,9 @@ function AppContent() {
   };
 
   const goToMapTab = () => setActiveTab('map');
-
   const toggleTheme = () => setIsDark(!isDark);
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.5rem', color: '#2d6a4f' }}>
         🌿 {t('loading')}
@@ -288,38 +330,129 @@ function AppContent() {
     );
   }
 
+  if (!user) {
+    return (
+      <div className="auth-screen">
+        <div className="auth-container">
+          <div className="auth-logo">
+            <i className="fas fa-leaf"></i>
+            <h1>Eco Guardian</h1>
+            <p>Environmental Issue Reporting System - Sri Lanka</p>
+          </div>
+          <button onClick={() => setShowAuthModal(true)} className="login-btn">
+            Login / Register
+          </button>
+        </div>
+        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      </div>
+    );
+  }
+
   return (
     <div className="app">
-      <nav className="navbar">
-        <div className="logo">
-          <i className="fas fa-leaf"></i>
-          <span>{t('appName')}</span>
-          <small>Sri Lanka</small>
-        </div>
-        
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div className="nav-tabs">
-            <button onClick={() => setActiveTab('map')} className={activeTab === 'map' ? 'active' : ''}>
-              🗺️ {t('map')}
-            </button>
-            <button onClick={() => setActiveTab('report')} className={activeTab === 'report' ? 'active' : ''}>
-              📸 {t('report')}
-            </button>
-            <button onClick={() => setActiveTab('issues')} className={activeTab === 'issues' ? 'active' : ''}>
-              📋 {t('issues')} ({issues.length})
-            </button>
-            <button onClick={() => setActiveTab('research')} className={activeTab === 'research' ? 'active' : ''}>
-              🔬 {t('research')}
-            </button>
-            <button onClick={() => setActiveTab('database')} className={activeTab === 'database' ? 'active' : ''}>
-              🗄️ {t('database')}
-            </button>
-          </div>
-          
-          <NotificationBell t={t} />
-          <SettingsDropdown isDark={isDark} toggleTheme={toggleTheme} language={language} changeLanguage={changeLanguage} t={t} />
-        </div>
-      </nav>
+    <nav className="navbar">
+    <div className="logo">
+    <i className="fas fa-leaf"></i>
+    <span>{t('appName')}</span>
+    <small>Sri Lanka</small>
+    </div>
+  
+  {/* Clickable User Info - Goes to Dashboard */}
+  <div 
+    className="user-info" 
+    onClick={() => {
+      if (isAdmin()) {
+        setActiveTab('admin-dashboard');
+      } else {
+        setActiveTab('dashboard');
+      }
+    }} 
+    style={{ cursor: 'pointer' }}
+  >
+    <span className="user-role">{user.role === 'admin' ? '👑 Admin' : '👤 User'}</span>
+    <span className="user-name">{user.username}</span>
+    <button 
+      onClick={(e) => {
+        e.stopPropagation();
+        logout();
+      }} 
+      className="logout-btn"
+    >
+      Logout
+    </button>
+  </div>
+  
+  <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+    <div className="nav-tabs">
+      {/* 1. Map - Always first */}
+      <button onClick={() => setActiveTab('map')} className={activeTab === 'map' ? 'active' : ''}>
+        🗺️ {t('map')}
+      </button>
+      
+      {/* 2. Issues - Second (unchanged) */}
+      <button onClick={() => setActiveTab('issues')} className={activeTab === 'issues' ? 'active' : ''}>
+        📋 {t('issues')} ({issues.length})
+      </button>
+      
+       {/* 4. Research - Fourth (moved after Report) */}
+      <button onClick={() => setActiveTab('research')} className={activeTab === 'research' ? 'active' : ''}>
+        🔬 {t('research')}
+      </button>
+
+      {/* 3. Report - NOW THIRD (moved before Research) */}
+      {isAdmin() && (
+        <button onClick={() => setActiveTab('report')} className={activeTab === 'report' ? 'active' : ''}>
+          📸 {t('report')}
+        </button>
+      )}
+      
+      {/* 5. Database - Only for admin (unchanged) */}
+      {isAdmin() && (
+        <button onClick={() => setActiveTab('database')} className={activeTab === 'database' ? 'active' : ''}>
+          🗄️ {t('database')}
+        </button>
+      )}
+      
+      {/* 6. User Reports - Only for admin (unchanged) */}
+      {isAdmin() && (
+        <button 
+          onClick={() => setActiveTab('admin-reports')} 
+          className={activeTab === 'admin-reports' ? 'active' : ''}
+        >
+          📢 User Reports ({userReportsCount})
+        </button>
+      )}
+      
+      {/* 7. Report Issue Button - Only for regular users (unchanged) */}
+      {!isAdmin() && (
+        <button 
+          onClick={() => setShowUserReportModal(true)} 
+          className="report-issue-btn"
+          style={{
+            background: '#e67e22',
+            border: 'none',
+            padding: '8px 20px',
+            borderRadius: '30px',
+            color: 'white',
+            cursor: 'pointer',
+            fontSize: '0.9rem',
+            transition: 'all 0.3s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+          onMouseEnter={(e) => e.target.style.background = '#d35400'}
+          onMouseLeave={(e) => e.target.style.background = '#e67e22'}
+        >
+          📢 Report Issue
+        </button>
+      )}
+    </div>
+    
+    <NotificationBell t={t} />
+    <SettingsDropdown isDark={isDark} toggleTheme={toggleTheme} language={language} changeLanguage={changeLanguage} t={t} />
+  </div>
+</nav>
 
       {backendStatus === 'disconnected' && (
         <div style={{
@@ -336,7 +469,6 @@ function AppContent() {
         </div>
       )}
 
-      {/* Toast Notification */}
       {toast.show && (
         <ToastNotification
           message={toast.message}
@@ -346,8 +478,23 @@ function AppContent() {
       )}
 
       <div className="main">
-        {activeTab === 'map' && <Map issues={issues} onMapClick={handleMapClick} language={language} t={t} />}
-        {activeTab === 'report' && (
+        {activeTab === 'map' && (
+          <Map 
+            issues={issues} 
+            onMapClick={handleMapClick} 
+            language={language} 
+            t={t} 
+            isAdmin={isAdmin()} 
+          />
+        )}
+        
+        {/* User Dashboard */}
+        {activeTab === 'dashboard' && !isAdmin() && <UserDashboard user={user} t={t} />}
+        
+        {/* Admin Dashboard */}
+        {activeTab === 'admin-dashboard' && isAdmin() && <AdminDashboard user={user} t={t} />}
+        
+        {activeTab === 'report' && isAdmin() && (
           <ReportForm 
             selectedLocation={selectedLocation} 
             onSubmit={addIssue} 
@@ -356,6 +503,7 @@ function AppContent() {
             t={t}
           />
         )}
+        
         {activeTab === 'issues' && (
           <IssuesList
             issues={issues}
@@ -366,11 +514,22 @@ function AppContent() {
             onRefreshIssues={loadIssues}
             language={language}
             t={t}
+            isAdmin={isAdmin()}
           />
         )}
-        {activeTab === 'research' && <ResearchPanel language={language} t={t} />}
-        {activeTab === 'database' && <DatabaseViewer language={language} t={t} />}
+        
+        {activeTab === 'research' && <ResearchPanel language={language} t={t} isAdmin={isAdmin()} />}
+        
+        {activeTab === 'database' && isAdmin() && <DatabaseViewer language={language} t={t} />}
+        
+        {/* Admin Reports Panel - Only visible to admin */}
+        {activeTab === 'admin-reports' && isAdmin() && <AdminReportsPanel language={language} t={t} />}
       </div>
+
+      {/* User Report Modal - Only visible to REGULAR USERS */}
+      {!isAdmin() && showUserReportModal && (
+        <UserReportForm onClose={() => setShowUserReportModal(false)} t={t} />
+      )}
     </div>
   );
 }
@@ -517,11 +676,13 @@ function SettingsDropdown({ isDark, toggleTheme, language, changeLanguage, t }) 
   );
 }
 
-// Wrap App with LanguageProvider
+// Wrap App with LanguageProvider and AuthProvider
 function App() {
   return (
     <LanguageProvider>
-      <AppContent />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </LanguageProvider>
   );
 }
