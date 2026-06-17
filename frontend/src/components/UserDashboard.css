@@ -1033,3 +1033,20 @@ body.dark .edit-modal-body .form-group textarea {
 .view-details-btn {
   flex: 1;
 }
+/* Dark Mode - User Dashboard Text Fix */
+body.dark .user-dashboard h1,
+body.dark .user-dashboard h2,
+body.dark .user-dashboard h3,
+body.dark .user-dashboard p,
+body.dark .user-dashboard span,
+body.dark .user-dashboard div {
+  color: #f8f9fa !important;
+}
+
+body.dark .stat-info h3 {
+  color: #f8f9fa !important;
+}
+
+body.dark .stat-info span {
+  color: #adb5bd !important;
+}

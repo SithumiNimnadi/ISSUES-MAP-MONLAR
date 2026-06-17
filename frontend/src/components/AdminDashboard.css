@@ -949,3 +949,20 @@ body.dark .stat-value {
     width: auto;
   }
 }
+/* Dark Mode - Admin Dashboard Text Fix */
+body.dark .admin-dashboard h1,
+body.dark .admin-dashboard h2,
+body.dark .admin-dashboard h3,
+body.dark .admin-dashboard p,
+body.dark .admin-dashboard span,
+body.dark .admin-dashboard div {
+  color: #f8f9fa !important;
+}
+
+body.dark .stat-info h3 {
+  color: #f8f9fa !important;
+}
+
+body.dark .stat-info span {
+  color: #adb5bd !important;
+}
